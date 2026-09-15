@@ -101,9 +101,34 @@ ratchet provider test claude         # confirm the credential works first
 ratchet                              # start the conversation
 ```
 
-That is it. `init` inspects the repository and writes a config that fits it —
-detecting the language, the source directories, and the test command. It never
-modifies existing files.
+`init` is built for existing repositories. It inspects the project and writes a
+config that fits it — detecting the language, the source directories, and the
+test command — and does not touch anything else:
+
+```
+$ ratchet init myapp
+
+🔍 Memeriksa proyek…
+   bahasa        : Rust
+   folder sumber : src
+   diabaikan     : node_modules, target (vendor/generated)
+
+✅ Siap. Dibuat:
+   ./ratchet.toml
+   ./.ratchet/
+```
+
+It will **not**:
+
+- modify, move or reformat any existing file
+- create or edit your root `.gitignore` (machine-local state is ignored via a
+  scoped `.ratchet/.gitignore` instead)
+- add vendored or generated directories to the write allow-list
+- overwrite an existing `ratchet.toml`
+
+`.ratchet/` holds the specs, plans and verification reports, so it is worth
+committing. Clone a repository that already has `ratchet.toml` and you can skip
+`init` entirely.
 
 ### Or set it up from a local model
 

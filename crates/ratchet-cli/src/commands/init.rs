@@ -90,6 +90,20 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
     };
     config.save(&config_path)?;
 
+    // Specs, plans and reports belong in version control — they are the
+    // decision record. Machine-local noise does not, and an existing project
+    // should not have its own .gitignore rewritten, so scope this to .ratchet/.
+    let ignore = ratchet_dir.join(".gitignore");
+    if !ignore.exists() {
+        tokio::fs::write(
+            &ignore,
+            "# Machine-local state: regenerated per machine, noisy in diffs.\n\
+             metrics.jsonl\n\
+             tool-output/\n",
+        )
+        .await?;
+    }
+
     let intent_md = ratchet_dir.join("intent.md");
     if !intent_md.exists() {
         tokio::fs::write(
@@ -104,6 +118,9 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
     println!("✅ Siap. Dibuat:");
     println!("   {}", config_path.display());
     println!("   {}/", ratchet_dir.display());
+    println!();
+    println!("   .ratchet/ sebaiknya di-commit (spec, plan, laporan verifikasi).");
+    println!("   State mesin-lokal sudah di-ignore lewat .ratchet/.gitignore.");
 
     if let Some(test) = &detected.test_command {
         println!();
