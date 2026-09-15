@@ -7,8 +7,9 @@ use std::path::PathBuf;
 #[command(about = "Ratchet — A Spec-Driven Engineering Harness for Any Model")]
 #[command(version = env!("CARGO_PKG_VERSION"))]
 struct Cli {
+    /// With no subcommand, Ratchet starts an interactive session.
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 
     /// Path to project directory
     #[arg(short, long, global = true, default_value = ".")]
@@ -25,6 +26,13 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Start an interactive session: describe what you want, answer a few
+    /// questions, and Ratchet writes the spec and builds it
+    Chat {
+        /// Skip the opening prompt
+        prompt: Option<String>,
+    },
+
     /// Initialize a new Ratchet project
     Init {
         /// Project name
@@ -234,7 +242,14 @@ async fn main() -> anyhow::Result<()> {
         .with_target(false)
         .init();
 
-    match cli.command {
+    // No subcommand: this is a conversational tool, so start talking.
+    let Some(command) = cli.command else {
+        chat::run(&cli.project_dir, None).await?;
+        return Ok(());
+    };
+
+    match command {
+        Commands::Chat { prompt } => chat::run(&cli.project_dir, prompt).await?,
         Commands::Init { name } => init::run(&cli.project_dir, &name).await?,
         Commands::Spec { action } => match action {
             SpecAction::New { id } => spec_cmd::new_spec(&cli.project_dir, &id).await?,

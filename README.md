@@ -166,22 +166,121 @@ rm -rf ~/.ratchet           # cached credentials (OS keychain entries persist)
 
 ## Quick Start
 
+Just start talking. There is no markdown to edit:
+
+```
+$ ratchet
+
+Ratchet — ngobrol dulu, baru dikerjakan
+› buatkan aku toko online sederhana
+
+🤖 Baik — "buatkan aku toko online sederhana".
+   Saya tanya beberapa hal dulu supaya spec-nya tepat.
+
+🤖 Dua hal yang mengubah desainnya:
+[1/2] Jual produk fisik, digital, atau keduanya?
+   1. fisik
+   2. digital
+   3. keduanya
+Pilih (enter = fisik): 1
+[2/2] Payment gateway apa yang dipakai?
+Jawab: midtrans
+
+🤖 Saya sudah cukup. Ini spec yang saya usulkan:
+
+   Toko Online Sederhana  (id: toko-online)
+
+   Tujuan
+     • Menampilkan katalog produk
+     • Checkout satu produk
+
+   Kriteria diterima
+     AC-1 Fungsi katalog tersedia      (cek: src/lib.rs berubah)
+     AC-2 Test lulus                   (cek: cargo test)
+
+   ✓ 2 kriteria bisa dicek otomatis
+
+   enter = setuju · ketik perubahan untuk revisi · /batal
+›
+
+   ✓ spec disimpan: ./.ratchet/spec/toko-online.spec.md
+🤖 Sekarang saya susun rencana kerjanya…
+
+   Rencana
+     T-1 Implement the catalogue
+
+   enter = jalankan · /batal
+›
+
+🤖 Mulai kerja. Saya laporkan kalau sudah selesai.
+
+🤖 Selesai. Saya menambahkan katalog produk di src/lib.rs beserta test-nya,
+   dan seluruh kriteria otomatis sudah lolos.
+
+   ✅ AC-1 — Fungsi katalog tersedia
+   ✅ AC-2 — Test lulus
+```
+
+That is the whole workflow. The model asks what it needs to know, proposes a
+spec with **checkable** acceptance criteria, and only writes code once you
+approve. The spec and task graph still land on disk as durable artifacts — you
+just never have to author them by hand.
+
+### What happens behind the conversation
+
+```
+your request
+    ↓
+discovery      model asks questions until it can write verifiable criteria
+    ↓
+spec           proposed for your approval, then written to .ratchet/spec/
+    ↓
+plan           task graph proposed for your approval
+    ↓
+execution      tools run, each task verified as it closes
+    ↓
+verification   every criterion checked against real evidence
+    ↓
+report         plain-language summary of what changed and what did not
+```
+
+### Session commands
+
+| Command | Does |
+|---|---|
+| *(type anything)* | starts a new request, or revises the current spec |
+| `enter` | approve the current spec or plan |
+| `/spec` | show the proposed spec again |
+| `/status` | current phase |
+| `/reset` | discard and start over |
+| `/help` | help |
+| `/keluar` | exit |
+
+### Non-interactive use
+
+Every step is also a command, for CI and scripting:
+
+```bash
+ratchet spec new billing-reminders    # or author the spec yourself
+ratchet plan billing-reminders
+ratchet run billing-reminders --all
+ratchet verify billing-reminders
+```
+
+### First-time setup
+
 ```bash
 ratchet init my-project
 cd my-project
 
-# point it at a model (this also sets routing.default)
 ratchet provider add claude --kind anthropic --key-env ANTHROPIC_API_KEY
-ratchet provider test claude          # confirm the credential works
+ratchet provider test claude          # confirm the credential works before anything else
 
-ratchet spec new billing-reminders    # then edit the acceptance criteria
-ratchet plan billing-reminders        # model drafts a task graph
-ratchet run billing-reminders --all   # model does the work
-ratchet verify billing-reminders      # check it against the spec
+ratchet                               # start the conversation
 ```
 
-That is the whole loop. `ratchet init` deliberately configures no providers, so
-routing is set the moment you add one — there is no config to hand-edit.
+`init` deliberately configures no providers, so routing is set the moment you
+add one — there is no config to hand-edit.
 
 Provider flags cover the common cases without touching `ratchet.toml`:
 
@@ -204,6 +303,7 @@ ratchet doctor --online   # also makes a live request to each provider
 
 | Command | Description |
 |---|---|
+| `ratchet` / `ratchet chat [prompt]` | Interactive session — describe what you want, answer questions, approve, watch it build |
 | `ratchet init [name]` | Scaffold `.ratchet/` in the current repo |
 | `ratchet spec new <id>` | Create a new spec |
 | `ratchet spec edit <id>` | Open a spec in `$EDITOR` |

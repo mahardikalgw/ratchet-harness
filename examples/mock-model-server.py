@@ -46,15 +46,31 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 # The "work" the mock model performs
 # ---------------------------------------------------------------------------
 
-SLUGIFY_RS = '''//! Utility crate under active development.
+CATALOG_RS = '''//! Toko online sederhana.
 
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
 
-/// Convert text into a URL slug: lowercase, spaces become hyphens.
-pub fn slugify(text: &str) -> String {
-    text.to_lowercase().replace(' ', "-")
+/// A product in the catalogue.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Product {
+    pub sku: String,
+    pub name: String,
+    pub price: u64,
+}
+
+/// Everything on sale, in display order.
+pub fn catalog() -> Vec<Product> {
+    vec![
+        Product { sku: "SKU-1".into(), name: "Kopi Arabika".into(), price: 85000 },
+        Product { sku: "SKU-2".into(), name: "Teh Hijau".into(), price: 45000 },
+    ]
+}
+
+/// Total for a single-product checkout.
+pub fn checkout_price(sku: &str) -> Option<u64> {
+    catalog().into_iter().find(|p| p.sku == sku).map(|p| p.price)
 }
 
 #[cfg(test)]
@@ -62,31 +78,72 @@ mod tests {
     use super::*;
 
     #[test]
-    fn lowercases_and_hyphenates() {
-        assert_eq!(slugify("Hello World"), "hello-world");
+    fn catalog_is_not_empty() {
+        assert!(!catalog().is_empty());
     }
 
     #[test]
-    fn handles_multiple_words() {
-        assert_eq!(slugify("A  B C"), "a--b-c");
+    fn finds_a_product_by_sku() {
+        assert_eq!(checkout_price("SKU-1"), Some(85000));
+    }
+
+    #[test]
+    fn unknown_sku_is_none() {
+        assert_eq!(checkout_price("NOPE"), None);
     }
 }
 '''
 
 PLAN = {
-    "summary": "Add a slugify helper with tests.",
+    "summary": "Add a product catalogue and single-product checkout.",
     "affected_modules": ["src/lib.rs"],
-    "data_model_changes": [],
-    "risk_notes": ["unicode normalisation is out of scope"],
+    "data_model_changes": ["Product struct"],
+    "risk_notes": ["no persistence yet; the catalogue is hard-coded"],
     "tasks": [
         {
             "id": "T-1",
-            "title": "Implement slugify",
-            "description": "Add slugify to src/lib.rs together with unit tests.",
+            "title": "Implement the catalogue",
+            "description": "Add Product, catalog() and checkout_price() to src/lib.rs with tests.",
             "depends_on": [],
             "verification": {"kind": "test", "command": "cargo test"},
         }
     ],
+}
+
+
+DISCOVERY_QUESTIONS = {
+    "done": False,
+    "rationale": "Dua hal yang mengubah desainnya:",
+    "questions": [
+        {
+            "id": "q1",
+            "question": "Jual produk fisik, digital, atau keduanya?",
+            "kind": "choice",
+            "options": ["fisik", "digital", "keduanya"],
+            "default": "fisik",
+        },
+        {
+            "id": "q2",
+            "question": "Payment gateway apa yang dipakai?",
+            "kind": "text",
+            "default": "midtrans",
+        },
+    ],
+}
+
+DISCOVERY_SPEC = {
+    "done": True,
+    "spec": {
+        "id": "toko-online",
+        "title": "Toko Online Sederhana",
+        "goals": ["Menampilkan katalog produk", "Checkout satu produk"],
+        "non_goals": ["Multi-vendor", "Manajemen gudang"],
+        "acceptance_criteria": [
+            {"id": "AC-1", "description": "Fungsi katalog tersedia", "verify_diff": "src/lib.rs"},
+            {"id": "AC-2", "description": "Test lulus", "verify": "cargo test"},
+        ],
+        "constraints": ["Bahasa Indonesia"],
+    },
 }
 
 
@@ -98,6 +155,7 @@ class State:
         self.reject_first_review = args.reject_first_review
         self.requests = 0
         self.reviews = 0
+        self.discovery_round = 0
 
     def should_fail(self) -> bool:
         self.requests += 1
@@ -158,8 +216,22 @@ def decide(body: dict, state: State) -> dict:
     prompt = "\n".join(m.get("content") or "" for m in messages)
     roles = [m.get("role") for m in messages]
 
-    # --- no tools offered: planning or reviewing -------------------------
+    # --- no tools offered: conversation, planning, or reviewing ----------
     if not tools:
+        # Elicitation: ask once, then propose the spec.
+        if "turning a request into a precise, verifiable specification" in prompt:
+            state.discovery_round += 1
+            payload = (
+                DISCOVERY_QUESTIONS if state.discovery_round == 1 else DISCOVERY_SPEC
+            )
+            return text_response(json.dumps(payload))
+        # Post-run narration.
+        if "You just finished working on this request" in prompt:
+            return text_response(
+                "Selesai. Saya menambahkan fungsi katalog di src/lib.rs beserta "
+                "test-nya, dan seluruh kriteria otomatis sudah lolos. "
+                "Tidak ada yang keluar dari rencana."
+            )
         if "Generate a technical plan" in prompt:
             return text_response(json.dumps(PLAN))
         if "Review the following" in prompt:
@@ -178,7 +250,7 @@ def decide(body: dict, state: State) -> dict:
     available = {t["function"]["name"] for t in tools}
     if "file_write" in available:
         return tool_response(
-            "call-1", "file_write", {"path": "src/lib.rs", "content": SLUGIFY_RS}
+            "call-1", "file_write", {"path": "src/lib.rs", "content": CATALOG_RS}
         )
     if "list_dir" in available:
         return tool_response("call-1", "list_dir", {"path": "."})

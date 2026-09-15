@@ -284,6 +284,62 @@ impl AgentHarness {
         })
     }
 
+    /// Run a single, tool-free completion for a given role.
+    async fn converse(
+        &self,
+        role: AgentRole,
+        prompt: String,
+        max_tokens: u64,
+    ) -> CoreResult<String> {
+        let preferred = provider_for_role(&self.config.delegation, role)
+            .or_else(|| self.config.routing.planning_tasks.clone())
+            .or_else(|| self.config.routing.default.clone());
+
+        let request = RoutingRequest {
+            task_type: TaskType::Planning,
+            required_capabilities: role.required_capabilities(),
+            preferred_model: preferred,
+        };
+
+        let route = self.router.route(&request)?;
+        let response = route
+            .provider
+            .complete(ratchet_providers::ChatRequest {
+                messages: vec![ratchet_providers::types::Message {
+                    role: ratchet_providers::types::MessageRole::User,
+                    content: prompt,
+                    tool_calls: None,
+                    tool_results: None,
+                }],
+                tools: vec![],
+                temperature: Some(0.2),
+                max_tokens: Some(max_tokens),
+                model: None,
+            })
+            .await
+            .map_err(|e| CoreError::Provider(e.to_string()))?;
+
+        Ok(response.content)
+    }
+
+    /// Ask the model what it still needs to know, or for a proposed spec.
+    pub async fn draft_spec(
+        &self,
+        intent: &str,
+        transcript: &[crate::discovery::Exchange],
+        round: usize,
+    ) -> CoreResult<crate::discovery::DiscoveryOutcome> {
+        let prompt = crate::discovery::discovery_prompt(intent, transcript, round);
+        let raw = self.converse(AgentRole::Planner, prompt, 2048).await?;
+        Ok(crate::discovery::parse_discovery(&raw))
+    }
+
+    /// Turn a finished run into a plain-language report for the user.
+    pub async fn narrate_run(&self, intent: &str, facts: &str) -> CoreResult<String> {
+        let prompt = crate::discovery::summary_prompt(intent, facts);
+        self.converse(AgentRole::Reviewer, prompt, 1024).await
+    }
+
     /// Verify spec conformance against the current working tree.
     pub async fn verify(&self, spec: &SpecFile) -> CoreResult<VerificationReport> {
         let schema = SpecSchema {
