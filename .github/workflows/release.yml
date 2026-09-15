@@ -17,7 +17,49 @@ env:
   BIN_NAME: ratchet
 
 jobs:
+  verify:
+    name: verify version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: The tag must match the workspace version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          expected="${tag#v}"
+
+          # Ask cargo rather than parsing TOML, and confirm every crate agrees
+          # on one version. A crate that drifted would ship a lying --version.
+          versions="$(cargo metadata --no-deps --format-version 1 | python3 -c "
+          import json, sys
+          pkgs = json.load(sys.stdin)['packages']
+          print(' '.join(sorted({p['version'] for p in pkgs})))
+          ")"
+
+          echo "tag        : $tag"
+          echo "expected   : $expected"
+          echo "cargo says : $versions"
+
+          if [ "$(echo "$versions" | wc -w)" -ne 1 ]; then
+            echo "::error::workspace crates disagree on a version: $versions"
+            exit 1
+          fi
+
+          if [ "$expected" != "$versions" ]; then
+            echo "::error::tag '$tag' does not match the workspace version '$versions'"
+            echo "::error::Use scripts/release.sh, which keeps the two in step."
+            exit 1
+          fi
+
+          echo "version verified: $versions"
+
   build:
+    needs: verify
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:

@@ -158,6 +158,30 @@ cargo fmt --all                   # format
 cargo build --release             # optimized binary
 ```
 
+### Releasing
+
+```bash
+scripts/release.sh 0.4.0            # bump, test, commit, tag, push
+scripts/release.sh 0.4.0 --dry-run  # show what would happen
+```
+
+The version lives in exactly one place — `[workspace.package] version` in the
+root `Cargo.toml` — and all 13 crates inherit it via `version.workspace = true`.
+The binary reads it at compile time (`env!("CARGO_PKG_VERSION")`), so
+`ratchet --version` cannot drift from the release once the tag matches.
+
+Two independent guards keep it that way:
+
+| Guard | Where | Catches |
+|---|---|---|
+| version consistency job | every CI run | a crate that stopped inheriting the workspace version |
+| `verify` job | every release | a tag that disagrees with `Cargo.toml` |
+
+The release job runs first and fails the whole pipeline before anything is
+built, so a mislabelled release is impossible rather than merely unlikely. The
+script exists because the manual version of this — edit, commit, tag, push —
+is exactly how the two drifted apart in the first place.
+
 ### CI/CD
 
 | Workflow | Trigger | Does |

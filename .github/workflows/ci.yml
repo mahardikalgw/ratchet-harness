@@ -78,6 +78,26 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --all
 
+  version:
+    name: workspace version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Every crate must share one version
+        run: |
+          set -euo pipefail
+          versions="$(cargo metadata --no-deps --format-version 1 | python3 -c "
+          import json, sys
+          pkgs = json.load(sys.stdin)['packages']
+          print(' '.join(sorted({p['version'] for p in pkgs})))
+          ")"
+          echo "workspace version: $versions"
+          if [ "$(echo "$versions" | wc -w)" -ne 1 ]; then
+            echo "::error::crates disagree on a version: $versions"
+            exit 1
+          fi
+
   musl:
     name: static musl build
     runs-on: ubuntu-latest
