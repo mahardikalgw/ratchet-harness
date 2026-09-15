@@ -48,46 +48,72 @@ pub fn string_arg<'a>(args: &'a serde_json::Value, keys: &[&str]) -> Option<&'a 
 mod tests {
     use super::*;
 
+    /// A real absolute path, so these assertions also hold on Windows, where
+    /// `/project` is merely "rooted" and not an absolute path.
+    fn project_root() -> PathBuf {
+        std::env::temp_dir()
+            .join("ratchet-path-tests")
+            .join("project")
+    }
+
     #[test]
     fn strips_leading_slash() {
-        let cwd = Path::new("/project");
+        let cwd = project_root();
         assert_eq!(
-            resolve_path(cwd, "/src/lib.rs"),
-            PathBuf::from("/project/src/lib.rs")
+            resolve_path(&cwd, "/src/lib.rs"),
+            cwd.join("src").join("lib.rs")
         );
     }
 
     #[test]
     fn strips_dot_slash() {
-        let cwd = Path::new("/project");
+        let cwd = project_root();
         assert_eq!(
-            resolve_path(cwd, "./src/lib.rs"),
-            PathBuf::from("/project/src/lib.rs")
+            resolve_path(&cwd, "./src/lib.rs"),
+            cwd.join("src").join("lib.rs")
         );
     }
 
     #[test]
     fn keeps_plain_relative() {
-        let cwd = Path::new("/project");
+        let cwd = project_root();
         assert_eq!(
-            resolve_path(cwd, "src/lib.rs"),
-            PathBuf::from("/project/src/lib.rs")
+            resolve_path(&cwd, "src/lib.rs"),
+            cwd.join("src").join("lib.rs")
         );
     }
 
     #[test]
     fn keeps_absolute_paths_inside_the_project() {
-        let cwd = Path::new("/project");
-        assert_eq!(
-            resolve_path(cwd, "/project/src/lib.rs"),
-            PathBuf::from("/project/src/lib.rs")
-        );
+        let cwd = project_root();
+        let absolute = cwd.join("src").join("lib.rs");
+        assert_eq!(resolve_path(&cwd, &absolute.to_string_lossy()), absolute);
     }
 
     #[test]
     fn empty_path_is_the_project_root() {
-        let cwd = Path::new("/project");
-        assert_eq!(resolve_path(cwd, ""), PathBuf::from("/project"));
-        assert_eq!(resolve_path(cwd, "/"), PathBuf::from("/project"));
+        let cwd = project_root();
+        assert_eq!(resolve_path(&cwd, ""), cwd);
+        assert_eq!(resolve_path(&cwd, "/"), cwd);
+    }
+
+    #[test]
+    fn a_leading_slash_never_escapes_the_project_root() {
+        // The point of normalisation: `/etc/passwd` resolves *inside* the
+        // project and is then rejected by the sandbox, rather than silently
+        // escaping it.
+        let cwd = project_root();
+        let resolved = resolve_path(&cwd, "/etc/passwd");
+        assert!(resolved.starts_with(&cwd), "{resolved:?} escaped {cwd:?}");
+    }
+
+    #[test]
+    fn string_arg_accepts_common_aliases() {
+        let args = serde_json::json!({"file_path": "src/lib.rs"});
+        assert_eq!(
+            string_arg(&args, &["path", "file_path"]),
+            Some("src/lib.rs")
+        );
+        assert_eq!(string_arg(&args, &["path"]), None);
     }
 }
