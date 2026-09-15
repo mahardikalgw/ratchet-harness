@@ -27,13 +27,24 @@ impl RatchetServer {
         }
     }
 
+    /// Bind the listening socket.
+    ///
+    /// Separated from [`Self::serve`] so a caller (or a test) can bind port 0
+    /// and learn the assigned port without a bind/drop/re-bind race.
+    pub async fn bind(port: u16) -> std::io::Result<TcpListener> {
+        TcpListener::bind(("127.0.0.1", port)).await
+    }
+
     pub async fn run(self) -> std::io::Result<()> {
-        let listener = TcpListener::bind(("127.0.0.1", self.port)).await?;
-        println!("📊 Dashboard: http://127.0.0.1:{}/", self.port);
-        println!(
-            "🤝 A2A agent card: http://127.0.0.1:{}/.well-known/agent.json",
-            self.port
-        );
+        let listener = Self::bind(self.port).await?;
+        self.serve(listener).await
+    }
+
+    /// Serve on an already-bound listener.
+    pub async fn serve(self, listener: TcpListener) -> std::io::Result<()> {
+        let port = listener.local_addr().map(|a| a.port()).unwrap_or(self.port);
+        println!("📊 Dashboard: http://127.0.0.1:{port}/");
+        println!("🤝 A2A agent card: http://127.0.0.1:{port}/.well-known/agent.json");
 
         let shared = Arc::new(self);
 

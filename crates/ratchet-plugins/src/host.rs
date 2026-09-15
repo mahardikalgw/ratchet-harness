@@ -185,6 +185,8 @@ async fn run_plugin(
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
+        // A hung plugin must not outlive its timeout.
+        .kill_on_drop(true)
         .spawn()
         .map_err(|source| PluginError::Spawn {
             plugin: manifest.name.clone(),

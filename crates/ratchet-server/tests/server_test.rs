@@ -229,15 +229,13 @@ fn responses_carry_correct_reasons() {
 async fn serves_card_dashboard_and_a2a_over_http() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    // Reserve an ephemeral port, release it, then hand the number to the server.
-    let port = {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        listener.local_addr().unwrap().port()
-    };
+    // Bind port 0 and serve on that exact listener: no bind/drop/re-bind race.
+    let listener = RatchetServer::bind(0).await.unwrap();
+    let port = listener.local_addr().unwrap().port();
 
     let handle = tokio::spawn(async move {
         let server = RatchetServer::new(port, Arc::new(FakeDashboard), dispatcher());
-        let _ = server.run().await;
+        let _ = server.serve(listener).await;
     });
 
     // Give the listener a moment to bind.
