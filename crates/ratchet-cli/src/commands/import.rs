@@ -2,11 +2,7 @@ use anyhow::Result;
 use ratchet_core::import::{ImportFormat, SpecImporter};
 use std::path::Path;
 
-pub async fn run(
-    project_dir: &Path,
-    source: &Path,
-    format: Option<String>,
-) -> Result<()> {
+pub async fn run(project_dir: &Path, source: &Path, format: Option<String>) -> Result<()> {
     let format = match format.as_deref() {
         Some("agents.md") => ImportFormat::AgentsMd,
         Some("openspec") => ImportFormat::OpenSpec,
@@ -30,7 +26,10 @@ pub async fn run(
 
     tokio::fs::write(&dest_path, &spec.raw).await?;
 
-    println!("✅ Imported spec '{}' to {:?}", spec.frontmatter.id, dest_path);
+    println!(
+        "✅ Imported spec '{}' to {:?}",
+        spec.frontmatter.id, dest_path
+    );
     println!("   Title: {}", spec.frontmatter.title);
     println!("   Sections: {}", spec.sections.len());
 

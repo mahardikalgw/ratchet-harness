@@ -39,11 +39,9 @@ pub fn resolve_path(cwd: &Path, raw: &str) -> PathBuf {
 /// Models vary in what they call a path argument (`path`, `file`,
 /// `file_path`, ...). Accepting the common spellings avoids a whole category
 /// of avoidable failures.
-pub fn string_arg<'a>(
-    args: &'a serde_json::Value,
-    keys: &[&str],
-) -> Option<&'a str> {
-    keys.iter().find_map(|k| args.get(*k).and_then(|v| v.as_str()))
+pub fn string_arg<'a>(args: &'a serde_json::Value, keys: &[&str]) -> Option<&'a str> {
+    keys.iter()
+        .find_map(|k| args.get(*k).and_then(|v| v.as_str()))
 }
 
 #[cfg(test)]
@@ -53,19 +51,28 @@ mod tests {
     #[test]
     fn strips_leading_slash() {
         let cwd = Path::new("/project");
-        assert_eq!(resolve_path(cwd, "/src/lib.rs"), PathBuf::from("/project/src/lib.rs"));
+        assert_eq!(
+            resolve_path(cwd, "/src/lib.rs"),
+            PathBuf::from("/project/src/lib.rs")
+        );
     }
 
     #[test]
     fn strips_dot_slash() {
         let cwd = Path::new("/project");
-        assert_eq!(resolve_path(cwd, "./src/lib.rs"), PathBuf::from("/project/src/lib.rs"));
+        assert_eq!(
+            resolve_path(cwd, "./src/lib.rs"),
+            PathBuf::from("/project/src/lib.rs")
+        );
     }
 
     #[test]
     fn keeps_plain_relative() {
         let cwd = Path::new("/project");
-        assert_eq!(resolve_path(cwd, "src/lib.rs"), PathBuf::from("/project/src/lib.rs"));
+        assert_eq!(
+            resolve_path(cwd, "src/lib.rs"),
+            PathBuf::from("/project/src/lib.rs")
+        );
     }
 
     #[test]

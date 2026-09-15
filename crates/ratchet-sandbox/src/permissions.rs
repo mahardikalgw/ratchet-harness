@@ -1,4 +1,4 @@
-use crate::{error::SandboxResult, SandboxError};
+use crate::{SandboxError, error::SandboxResult};
 use std::path::{Path, PathBuf};
 
 /// Enforces filesystem and execution boundaries.
@@ -88,7 +88,10 @@ impl ShellScope {
 
     pub fn check_allowed(&self, command: &str) -> SandboxResult<()> {
         let trimmed = command.trim();
-        let allowed = self.allowlist.iter().any(|allowed| trimmed.starts_with(allowed));
+        let allowed = self
+            .allowlist
+            .iter()
+            .any(|allowed| trimmed.starts_with(allowed));
 
         if allowed || self.allowlist.is_empty() {
             Ok(())
@@ -115,7 +118,10 @@ pub enum ApprovalDecision {
 
 impl ApprovalDecision {
     pub fn is_approved(self) -> bool {
-        matches!(self, ApprovalDecision::Approve | ApprovalDecision::ApproveAlways)
+        matches!(
+            self,
+            ApprovalDecision::Approve | ApprovalDecision::ApproveAlways
+        )
     }
 
     pub fn is_sticky(self) -> bool {

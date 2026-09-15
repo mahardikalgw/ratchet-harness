@@ -1,8 +1,4 @@
-use crate::{
-    format::SpecFile,
-    schema::SpecSchema,
-    SpecResult,
-};
+use crate::{SpecResult, format::SpecFile, schema::SpecSchema};
 
 /// Validates spec files against structural and semantic rules.
 pub struct SpecValidator;
@@ -128,7 +124,8 @@ pub enum ValidationLevel {
 
 fn is_kebab_case(s: &str) -> bool {
     !s.is_empty()
-        && s.chars().all(|c| c.is_lowercase() || c == '-' || c.is_numeric())
+        && s.chars()
+            .all(|c| c.is_lowercase() || c == '-' || c.is_numeric())
         && !s.starts_with('-')
         && !s.ends_with('-')
         && !s.contains("--")

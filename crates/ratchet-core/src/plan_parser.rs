@@ -1,7 +1,7 @@
 use crate::CoreResult;
 use ratchet_spec::{
-    schema::{Plan, TaskGraph, TaskNode, VerificationStep},
     SpecExtractor, SpecFile, TaskId,
+    schema::{Plan, TaskGraph, TaskNode, VerificationStep},
 };
 use serde::Deserialize;
 
@@ -271,9 +271,7 @@ impl RawVerification {
                 },
             },
             "diff" => match self.pattern {
-                Some(pattern) if !pattern.trim().is_empty() => {
-                    VerificationStep::Diff { pattern }
-                }
+                Some(pattern) if !pattern.trim().is_empty() => VerificationStep::Diff { pattern },
                 _ => VerificationStep::Manual {
                     instructions: "model requested a diff check but gave no pattern".to_string(),
                 },

@@ -25,12 +25,14 @@ impl McpClient {
             .stderr(Stdio::null())
             .spawn()?;
 
-        let stdin = child.stdin.take().ok_or_else(|| {
-            McpError::Transport("failed to capture stdin".into())
-        })?;
-        let stdout = child.stdout.take().ok_or_else(|| {
-            McpError::Transport("failed to capture stdout".into())
-        })?;
+        let stdin = child
+            .stdin
+            .take()
+            .ok_or_else(|| McpError::Transport("failed to capture stdin".into()))?;
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| McpError::Transport("failed to capture stdout".into()))?;
 
         let mut client = Self {
             stdin,
@@ -47,8 +49,13 @@ impl McpClient {
         let request = InitializeRequest {
             protocol_version: MCP_PROTOCOL_VERSION.to_string(),
             capabilities: ClientCapabilities {
-                tools: Some(ToolsCapability { list_changed: false }),
-                resources: Some(ResourcesCapability { subscribe: false, list_changed: false }),
+                tools: Some(ToolsCapability {
+                    list_changed: false,
+                }),
+                resources: Some(ResourcesCapability {
+                    subscribe: false,
+                    list_changed: false,
+                }),
             },
             client_info: Implementation {
                 name: "ratchet".to_string(),
@@ -92,7 +99,10 @@ impl McpClient {
     /// List available tools from the server.
     pub async fn list_tools(&mut self) -> McpResult<Vec<McpTool>> {
         let response: ListToolsResponse = self
-            .request("tools/list", Some(serde_json::to_value(ListToolsRequest { cursor: None })?))
+            .request(
+                "tools/list",
+                Some(serde_json::to_value(ListToolsRequest { cursor: None })?),
+            )
             .await?;
         Ok(response.tools)
     }
@@ -114,14 +124,19 @@ impl McpClient {
     /// List available resources.
     pub async fn list_resources(&mut self) -> McpResult<Vec<Resource>> {
         let response: ListResourcesResponse = self
-            .request("resources/list", Some(serde_json::to_value(ListResourcesRequest { cursor: None })?))
+            .request(
+                "resources/list",
+                Some(serde_json::to_value(ListResourcesRequest { cursor: None })?),
+            )
             .await?;
         Ok(response.resources)
     }
 
     /// Read a resource by URI.
     pub async fn read_resource(&mut self, uri: &str) -> McpResult<ReadResourceResponse> {
-        let request = ReadResourceRequest { uri: uri.to_string() };
+        let request = ReadResourceRequest {
+            uri: uri.to_string(),
+        };
         self.request("resources/read", Some(serde_json::to_value(request)?))
             .await
     }
@@ -163,21 +178,15 @@ impl McpClient {
             });
         }
 
-        let result = response.result.ok_or_else(|| {
-            McpError::JsonRpc {
-                code: -32603,
-                message: "empty result".into(),
-            }
+        let result = response.result.ok_or_else(|| McpError::JsonRpc {
+            code: -32603,
+            message: "empty result".into(),
         })?;
 
         Ok(serde_json::from_value(result)?)
     }
 
-    async fn notify(
-        &mut self,
-        method: &str,
-        params: Option<serde_json::Value>,
-    ) -> McpResult<()> {
+    async fn notify(&mut self, method: &str, params: Option<serde_json::Value>) -> McpResult<()> {
         let request = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: RequestId::Null,
@@ -202,7 +211,9 @@ pub struct McpClientRegistry {
 
 impl McpClientRegistry {
     pub fn new() -> Self {
-        Self { clients: Vec::new() }
+        Self {
+            clients: Vec::new(),
+        }
     }
 
     pub fn add(&mut self, name: String, client: McpClient) {
@@ -210,7 +221,10 @@ impl McpClientRegistry {
     }
 
     pub fn get(&mut self, name: &str) -> Option<&mut McpClient> {
-        self.clients.iter_mut().find(|(n, _)| n == name).map(|(_, c)| c)
+        self.clients
+            .iter_mut()
+            .find(|(n, _)| n == name)
+            .map(|(_, c)| c)
     }
 
     pub fn list(&self) -> Vec<&str> {

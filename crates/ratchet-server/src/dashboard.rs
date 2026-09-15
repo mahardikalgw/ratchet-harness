@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 /// Data the dashboard renders. Implemented by whoever owns the project state.
 #[async_trait::async_trait]
@@ -41,15 +41,30 @@ impl DashboardSource for NullDashboard {
 
 /// Self-contained dashboard: no external assets, no CDN, no build step.
 pub fn render_dashboard(summary: &Value, tasks: &Value, specs: &Value) -> String {
-    let total = summary.get("total_tasks").and_then(|v| v.as_u64()).unwrap_or(0);
+    let total = summary
+        .get("total_tasks")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
     let cost = summary
         .get("total_estimated_cost_usd")
         .and_then(|v| v.as_f64())
         .unwrap_or(0.0);
-    let passed = summary.get("tasks_passed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = summary.get("tasks_failed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let tokens_in = summary.get("total_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
-    let tokens_out = summary.get("total_output_tokens").and_then(|v| v.as_u64()).unwrap_or(0);
+    let passed = summary
+        .get("tasks_passed")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let failed = summary
+        .get("tasks_failed")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let tokens_in = summary
+        .get("total_input_tokens")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    let tokens_out = summary
+        .get("total_output_tokens")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
 
     let spec_rows = rows_for(
         specs,
@@ -58,7 +73,14 @@ pub fn render_dashboard(summary: &Value, tasks: &Value, specs: &Value) -> String
     );
     let task_rows = rows_for(
         tasks,
-        &["task_id", "provider", "model", "input_tokens", "output_tokens", "estimated_cost_usd"],
+        &[
+            "task_id",
+            "provider",
+            "model",
+            "input_tokens",
+            "output_tokens",
+            "estimated_cost_usd",
+        ],
         "No task records yet.",
     );
 

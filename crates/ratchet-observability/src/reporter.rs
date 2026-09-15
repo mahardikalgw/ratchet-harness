@@ -38,7 +38,10 @@ impl Reporter {
                 .iter()
                 .map(|(name, p)| format!(
                     "  {}: {} tasks, {} tokens, ${:.4}",
-                    name, p.tasks, p.input_tokens + p.output_tokens, p.estimated_cost_usd
+                    name,
+                    p.tasks,
+                    p.input_tokens + p.output_tokens,
+                    p.estimated_cost_usd
                 ))
                 .collect::<Vec<_>>()
                 .join("\n")

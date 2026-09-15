@@ -6,4 +6,4 @@ pub mod store;
 pub use error::{ObservabilityError, ObservabilityResult};
 pub use metrics::{CostTracker, TaskMetrics, UsageAggregate};
 pub use reporter::{ReportFormat, Reporter};
-pub use store::{metrics_path, MetricsStore};
+pub use store::{MetricsStore, metrics_path};

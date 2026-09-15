@@ -1,23 +1,23 @@
 use crate::{
+    CoreResult,
     config::ProjectConfig,
     delegation::{
-        parse_review_verdict, provider_for_role, review_request, revision_request, AgentRole,
-        ReviewVerdict,
+        AgentRole, ReviewVerdict, parse_review_verdict, provider_for_role, review_request,
+        revision_request,
     },
     error::CoreError,
     routing::{Router, RoutingRequest, TaskType},
-    CoreResult,
 };
 use ratchet_mcp::{client::McpClientRegistry, types::McpTool};
 use ratchet_memory::{ContextAssembler, ProjectMemory};
 use ratchet_observability::{CostTracker, TaskMetrics};
 use ratchet_plugins::PluginHost;
 use ratchet_providers::{
-    recover_tool_calls, traits::TokenUsage, ChatRequest, FailoverProvider, Message, MessageRole,
-    ModelProvider, RetryPolicy, ToolDefinition,
+    ChatRequest, FailoverProvider, Message, MessageRole, ModelProvider, RetryPolicy,
+    ToolDefinition, recover_tool_calls, traits::TokenUsage,
 };
 use ratchet_sandbox::{ApprovalDecision, ApprovalHandler, ApprovalPolicy, AutoDeny, SandboxGuard};
-use ratchet_spec::{schema::TaskGraph, SpecFile, TaskId, TaskStatus};
+use ratchet_spec::{SpecFile, TaskId, TaskStatus, schema::TaskGraph};
 use ratchet_tools::{ToolContext, ToolExecutor, ToolRegistry};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -301,9 +301,11 @@ impl TaskExecutor {
 
         let finished_at = chrono::Utc::now();
         let primary = self.provider_for(AgentRole::Implementer, node.assigned_model.clone())?;
-        let cost = primary
-            .cost_model()
-            .estimate_cost(total_usage.input_tokens, total_usage.output_tokens, total_usage.cached_tokens);
+        let cost = primary.cost_model().estimate_cost(
+            total_usage.input_tokens,
+            total_usage.output_tokens,
+            total_usage.cached_tokens,
+        );
 
         let changed_files = changed_files(&cwd).await;
 
@@ -607,7 +609,9 @@ impl TaskExecutor {
                     .await;
             }
             if self.mcp.is_some() {
-                return self.call_mcp_tool(namespace, tool, tc.arguments.clone()).await;
+                return self
+                    .call_mcp_tool(namespace, tool, tc.arguments.clone())
+                    .await;
             }
         }
 
@@ -706,7 +710,10 @@ impl TaskExecutor {
         );
         let path = self.tool_output_dir.join(filename);
 
-        if tokio::fs::create_dir_all(&self.tool_output_dir).await.is_err() {
+        if tokio::fs::create_dir_all(&self.tool_output_dir)
+            .await
+            .is_err()
+        {
             return preview(&output);
         }
         if tokio::fs::write(&path, &output).await.is_err() {

@@ -1,6 +1,4 @@
-use ratchet_a2a::{
-    AgentCard, Message, Part, Task, TaskSendParams, TaskState, TaskStatus,
-};
+use ratchet_a2a::{AgentCard, Message, Part, Task, TaskSendParams, TaskState, TaskStatus};
 
 #[test]
 fn card_advertises_the_spec_driven_skills() {
@@ -40,7 +38,12 @@ fn terminal_states_are_recognised() {
     for state in [TaskState::Completed, TaskState::Canceled, TaskState::Failed] {
         assert!(TaskStatus::new(state).terminal());
     }
-    for state in [TaskState::Submitted, TaskState::Working, TaskState::InputRequired, TaskState::Unknown] {
+    for state in [
+        TaskState::Submitted,
+        TaskState::Working,
+        TaskState::InputRequired,
+        TaskState::Unknown,
+    ] {
         assert!(!TaskStatus::new(state).terminal());
     }
 }
@@ -106,8 +109,12 @@ fn message_text_joins_multiple_parts() {
     let message = Message {
         role: "user".to_string(),
         parts: vec![
-            Part::Text { text: "line one".to_string() },
-            Part::Text { text: "line two".to_string() },
+            Part::Text {
+                text: "line one".to_string(),
+            },
+            Part::Text {
+                text: "line two".to_string(),
+            },
         ],
     };
     assert_eq!(message.text(), "line one\nline two");

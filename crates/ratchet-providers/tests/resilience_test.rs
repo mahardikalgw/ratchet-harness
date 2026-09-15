@@ -1,13 +1,13 @@
 use async_trait::async_trait;
 use ratchet_providers::{
+    ModelProvider,
     error::{ProviderError, ProviderResult},
     models::CostModel,
     resilience::{FailoverProvider, RetryPolicy},
     traits::{ChatRequest, ChatResponse, ChatStream, ProviderCapabilities, TokenUsage},
-    ModelProvider,
 };
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 /// Provider that always fails with a configurable error.
@@ -84,8 +84,14 @@ fn retry_policy_exhausts_attempt_budget() {
         jitter: false,
     };
 
-    assert_eq!(policy.delay_after_failure(1), Some(Duration::from_millis(1)));
-    assert_eq!(policy.delay_after_failure(2), Some(Duration::from_millis(2)));
+    assert_eq!(
+        policy.delay_after_failure(1),
+        Some(Duration::from_millis(1))
+    );
+    assert_eq!(
+        policy.delay_after_failure(2),
+        Some(Duration::from_millis(2))
+    );
     // Third failure exhausts the budget.
     assert_eq!(policy.delay_after_failure(3), None);
 }
@@ -100,12 +106,20 @@ fn retry_policy_caps_backoff() {
         jitter: false,
     };
     // 100 * 4^3 would be huge, but it is capped.
-    assert_eq!(policy.delay_after_failure(4), Some(Duration::from_millis(250)));
+    assert_eq!(
+        policy.delay_after_failure(4),
+        Some(Duration::from_millis(250))
+    );
 }
 
 #[test]
 fn rate_limit_and_timeout_are_retryable() {
-    assert!(ProviderError::RateLimited { provider: "x".into() }.is_retryable());
+    assert!(
+        ProviderError::RateLimited {
+            provider: "x".into()
+        }
+        .is_retryable()
+    );
     assert!(ProviderError::Timeout.is_retryable());
     assert!(ProviderError::api("x", 503, "unavailable").is_retryable());
     assert!(ProviderError::api("x", 429, "slow down").is_retryable());
@@ -113,7 +127,12 @@ fn rate_limit_and_timeout_are_retryable() {
 
 #[test]
 fn auth_and_config_errors_are_not_retryable() {
-    assert!(!ProviderError::Auth { provider: "x".into() }.is_retryable());
+    assert!(
+        !ProviderError::Auth {
+            provider: "x".into()
+        }
+        .is_retryable()
+    );
     assert!(!ProviderError::Config("bad".into()).is_retryable());
     assert!(!ProviderError::UnknownProvider("x".into()).is_retryable());
     assert!(!ProviderError::api("x", 400, "bad request").is_retryable());
@@ -124,7 +143,9 @@ async fn retries_a_transient_failure_then_succeeds() {
     let calls = Arc::new(AtomicUsize::new(0));
     let provider = FailingProvider {
         name: "flaky".into(),
-        error: || ProviderError::RateLimited { provider: "flaky".into() },
+        error: || ProviderError::RateLimited {
+            provider: "flaky".into(),
+        },
         calls: Arc::clone(&calls),
     };
 
@@ -149,7 +170,9 @@ async fn does_not_retry_a_permanent_failure() {
     let calls = Arc::new(AtomicUsize::new(0));
     let provider = FailingProvider {
         name: "bad-key".into(),
-        error: || ProviderError::Auth { provider: "bad-key".into() },
+        error: || ProviderError::Auth {
+            provider: "bad-key".into(),
+        },
         calls: Arc::clone(&calls),
     };
 
@@ -190,10 +213,7 @@ async fn fails_over_to_the_next_provider() {
         jitter: false,
     };
 
-    let failover = FailoverProvider::new(
-        vec![Arc::new(first), Arc::new(second)],
-        policy,
-    );
+    let failover = FailoverProvider::new(vec![Arc::new(first), Arc::new(second)], policy);
 
     let response = failover.complete(req()).await.unwrap();
     assert_eq!(response.provider, "up");
@@ -208,7 +228,9 @@ async fn fails_over_even_on_permanent_errors() {
 
     let bad_key = FailingProvider {
         name: "bad-key".into(),
-        error: || ProviderError::Auth { provider: "bad-key".into() },
+        error: || ProviderError::Auth {
+            provider: "bad-key".into(),
+        },
         calls: Arc::new(AtomicUsize::new(0)),
     };
     let working = WorkingProvider {
@@ -218,7 +240,10 @@ async fn fails_over_even_on_permanent_errors() {
 
     let failover = FailoverProvider::new(
         vec![Arc::new(bad_key), Arc::new(working)],
-        RetryPolicy { max_attempts: 3, ..RetryPolicy::default() },
+        RetryPolicy {
+            max_attempts: 3,
+            ..RetryPolicy::default()
+        },
     );
 
     let response = failover.complete(req()).await.unwrap();

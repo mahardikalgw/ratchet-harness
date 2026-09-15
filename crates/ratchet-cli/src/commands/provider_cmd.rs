@@ -1,5 +1,5 @@
 use anyhow::Result;
-use dialoguer::{theme::ColorfulTheme, Password};
+use dialoguer::{Password, theme::ColorfulTheme};
 use ratchet_core::ProjectConfig;
 use std::io::IsTerminal;
 use std::path::Path;

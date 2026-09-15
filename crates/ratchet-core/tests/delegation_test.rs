@@ -1,11 +1,14 @@
-use ratchet_core::delegation::{parse_review_verdict, AgentRole};
+use ratchet_core::delegation::{AgentRole, parse_review_verdict};
 use std::collections::HashMap;
 
 #[test]
 fn parses_role_names_with_aliases() {
     assert_eq!(AgentRole::parse("planner"), Some(AgentRole::Planner));
     assert_eq!(AgentRole::parse("PLAN"), Some(AgentRole::Planner));
-    assert_eq!(AgentRole::parse("implementer"), Some(AgentRole::Implementer));
+    assert_eq!(
+        AgentRole::parse("implementer"),
+        Some(AgentRole::Implementer)
+    );
     assert_eq!(AgentRole::parse("coder"), Some(AgentRole::Implementer));
     assert_eq!(AgentRole::parse("review"), Some(AgentRole::Reviewer));
     assert_eq!(AgentRole::parse("tester"), Some(AgentRole::Tester));
@@ -16,7 +19,11 @@ fn parses_role_names_with_aliases() {
 fn roles_declare_distinct_capabilities() {
     // The planner needs reasoning; the implementer needs tools. Routing relies
     // on this to send each role to an appropriate model.
-    assert!(AgentRole::Planner.required_capabilities().needs_extended_thinking);
+    assert!(
+        AgentRole::Planner
+            .required_capabilities()
+            .needs_extended_thinking
+    );
     assert!(AgentRole::Implementer.required_capabilities().needs_tools);
     assert!(!AgentRole::Reviewer.required_capabilities().needs_tools);
     assert!(AgentRole::Implementer.uses_tools());
@@ -25,9 +32,8 @@ fn roles_declare_distinct_capabilities() {
 
 #[test]
 fn parses_a_clean_approval_verdict() {
-    let verdict = parse_review_verdict(
-        r#"{"approved": true, "issues": [], "summary": "looks correct"}"#,
-    );
+    let verdict =
+        parse_review_verdict(r#"{"approved": true, "issues": [], "summary": "looks correct"}"#);
     assert!(verdict.parsed);
     assert!(verdict.approved);
     assert!(!verdict.should_retry());

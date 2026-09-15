@@ -57,8 +57,14 @@ fn request() -> GateRequest {
     GateRequest {
         spec_id: "demo".to_string(),
         criteria: vec![
-            GateCriterion { id: "AC-1".to_string(), description: "first".to_string() },
-            GateCriterion { id: "AC-2".to_string(), description: "second".to_string() },
+            GateCriterion {
+                id: "AC-1".to_string(),
+                description: "first".to_string(),
+            },
+            GateCriterion {
+                id: "AC-2".to_string(),
+                description: "second".to_string(),
+            },
         ],
         changed_files: vec!["src/lib.rs".to_string()],
         test_passed: Some(true),
@@ -137,7 +143,11 @@ async fn tool_plugin_describes_and_executes() {
     assert_eq!(descriptors[0].name, "word_count");
 
     let response = host
-        .call_tool("tools", "word_count", serde_json::json!({"text": "one two three"}))
+        .call_tool(
+            "tools",
+            "word_count",
+            serde_json::json!({"text": "one two three"}),
+        )
         .await
         .unwrap();
     assert!(!response.is_error);
@@ -164,7 +174,10 @@ async fn timeout_is_bounded() {
 
     let started = std::time::Instant::now();
     let results = host.run_gates(&request()).await;
-    assert!(started.elapsed().as_secs() < 10, "timeout should be enforced");
+    assert!(
+        started.elapsed().as_secs() < 10,
+        "timeout should be enforced"
+    );
     for (_, r) in &results {
         assert_eq!(r.status, GateStatus::Manual);
     }

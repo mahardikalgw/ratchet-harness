@@ -47,10 +47,9 @@ impl AgentCard {
     pub fn ratchet(url: impl Into<String>, version: impl Into<String>) -> Self {
         Self {
             name: "Ratchet".to_string(),
-            description:
-                "Spec-driven engineering harness. Delegates work from versioned specs, \
+            description: "Spec-driven engineering harness. Delegates work from versioned specs, \
                  executes it with tools, and reports verification results."
-                    .to_string(),
+                .to_string(),
             url: url.into(),
             version: version.into(),
             capabilities: AgentCapabilities {

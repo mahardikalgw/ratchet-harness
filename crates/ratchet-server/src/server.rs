@@ -19,11 +19,7 @@ pub struct RatchetServer {
 }
 
 impl RatchetServer {
-    pub fn new(
-        port: u16,
-        dashboard: Arc<dyn DashboardSource>,
-        a2a: Arc<A2aDispatcher>,
-    ) -> Self {
+    pub fn new(port: u16, dashboard: Arc<dyn DashboardSource>, a2a: Arc<A2aDispatcher>) -> Self {
         Self {
             port,
             dashboard,
@@ -100,7 +96,10 @@ impl RatchetServer {
             }
         };
 
-        let id = payload.get("id").cloned().unwrap_or(serde_json::Value::Null);
+        let id = payload
+            .get("id")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
         let method = payload.get("method").and_then(|m| m.as_str()).unwrap_or("");
         let params = payload
             .get("params")

@@ -1,18 +1,16 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::{Duration, Utc};
-use ratchet_a2a::{
-    A2aError, A2aResult, AgentCard, Task, TaskSendParams, TaskState, TaskStatus,
-};
+use ratchet_a2a::{A2aError, A2aResult, AgentCard, Task, TaskSendParams, TaskState, TaskStatus};
 use ratchet_core::{AgentHarness, RunOverrides};
-use ratchet_observability::{metrics_path, MetricsStore};
+use ratchet_observability::{MetricsStore, metrics_path};
 use ratchet_server::{
     a2a::{A2aDispatcher, A2aHandler},
     dashboard::DashboardSource,
     server::RatchetServer,
 };
 use ratchet_spec::SpecParser;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -153,13 +151,13 @@ impl A2aHandler for ProjectAgent {
             .ok_or_else(|| A2aError::TaskNotFound(id.to_string()))?;
 
         if task.status.terminal() {
-            return Err(A2aError::NotCancelable(format!(
-                "{:?}",
-                task.status.state
-            )));
+            return Err(A2aError::NotCancelable(format!("{:?}", task.status.state)));
         }
 
-        task.transition(TaskStatus::with_message(TaskState::Canceled, "canceled by peer"));
+        task.transition(TaskStatus::with_message(
+            TaskState::Canceled,
+            "canceled by peer",
+        ));
         Ok(task.clone())
     }
 }
@@ -236,12 +234,7 @@ fn short_stamp() -> String {
     Utc::now().format("%Y%m%d%H%M%S").to_string()
 }
 
-pub async fn run(
-    project_dir: &Path,
-    port: u16,
-    a2a_enabled: bool,
-    read_only: bool,
-) -> Result<()> {
+pub async fn run(project_dir: &Path, port: u16, a2a_enabled: bool, read_only: bool) -> Result<()> {
     let ratchet_dir = project_dir.join(".ratchet");
 
     let dashboard: Arc<dyn DashboardSource> = Arc::new(ProjectDashboard {
@@ -263,7 +256,10 @@ pub async fn run(
         Arc::new(A2aDispatcher::new(Arc::new(agent)))
     } else {
         let closed: Arc<dyn A2aHandler> = Arc::new(ratchet_server::a2a::ClosedAgent {
-            card: AgentCard::ratchet(format!("http://127.0.0.1:{port}/a2a"), env!("CARGO_PKG_VERSION")),
+            card: AgentCard::ratchet(
+                format!("http://127.0.0.1:{port}/a2a"),
+                env!("CARGO_PKG_VERSION"),
+            ),
         });
         Arc::new(A2aDispatcher::new(closed))
     };

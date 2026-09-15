@@ -24,7 +24,10 @@ async fn imports_agents_md_format() {
     tokio::fs::write(&path, AGENTS_MD).await.unwrap();
 
     let importer = SpecImporter::new();
-    let spec = importer.import(&path, ImportFormat::AgentsMd).await.unwrap();
+    let spec = importer
+        .import(&path, ImportFormat::AgentsMd)
+        .await
+        .unwrap();
 
     assert_eq!(spec.frontmatter.id, "payment-webhook-handling");
     assert_eq!(spec.frontmatter.title, "Payment Webhook Handling");
@@ -64,7 +67,10 @@ async fn reimporting_own_output_is_stable() {
     tokio::fs::write(&path, AGENTS_MD).await.unwrap();
 
     let importer = SpecImporter::new();
-    let first = importer.import(&path, ImportFormat::AgentsMd).await.unwrap();
+    let first = importer
+        .import(&path, ImportFormat::AgentsMd)
+        .await
+        .unwrap();
 
     // Write the imported raw spec and re-import it (OpenSpec path uses the native parser)
     let round_path = dir.path().join("round.spec.md");

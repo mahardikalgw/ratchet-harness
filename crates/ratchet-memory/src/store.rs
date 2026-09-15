@@ -80,7 +80,14 @@ impl ProjectMemory {
 
         entries
             .iter()
-            .map(|e| format!("- [{}] {}: {}", e.kind_string(), e.id, e.content.lines().next().unwrap_or("")))
+            .map(|e| {
+                format!(
+                    "- [{}] {}: {}",
+                    e.kind_string(),
+                    e.id,
+                    e.content.lines().next().unwrap_or("")
+                )
+            })
             .collect::<Vec<_>>()
             .join("\n")
     }

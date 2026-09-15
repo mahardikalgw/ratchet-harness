@@ -20,7 +20,9 @@ impl OpenAiCompatibleProvider {
     pub fn new(config: super::ProviderConfig) -> ProviderResult<Self> {
         Ok(Self {
             client: Client::builder()
-                .timeout(std::time::Duration::from_secs(config.timeout_secs.unwrap_or(120)))
+                .timeout(std::time::Duration::from_secs(
+                    config.timeout_secs.unwrap_or(120),
+                ))
                 .build()?,
             api_key: config.api_key,
             base_url: config.base_url.ok_or_else(|| {
@@ -48,18 +50,26 @@ impl ModelProvider for OpenAiCompatibleProvider {
         let response = request.send().await?;
 
         let resp: OpenAiCompatibleResponse =
-            crate::adapters::openai_types::parse_completion_response("openai_compatible", response).await?;
-        let choice = resp.choices.into_iter().next().ok_or_else(|| {
-            ProviderError::api("openai_compatible", 200, "no choices returned")
-        })?;
+            crate::adapters::openai_types::parse_completion_response("openai_compatible", response)
+                .await?;
+        let choice =
+            resp.choices.into_iter().next().ok_or_else(|| {
+                ProviderError::api("openai_compatible", 200, "no choices returned")
+            })?;
 
         Ok(ChatResponse {
             content: choice.message.content.unwrap_or_default(),
-            tool_calls: choice.message.tool_calls.unwrap_or_default().into_iter().map(|tc| ToolCall {
-                id: tc.id,
-                name: tc.function.name,
-                arguments: serde_json::from_str(&tc.function.arguments).unwrap_or_default(),
-            }).collect(),
+            tool_calls: choice
+                .message
+                .tool_calls
+                .unwrap_or_default()
+                .into_iter()
+                .map(|tc| ToolCall {
+                    id: tc.id,
+                    name: tc.function.name,
+                    arguments: serde_json::from_str(&tc.function.arguments).unwrap_or_default(),
+                })
+                .collect(),
             usage: TokenUsage {
                 input_tokens: resp.usage.prompt_tokens,
                 output_tokens: resp.usage.completion_tokens,
@@ -78,7 +88,8 @@ impl ModelProvider for OpenAiCompatibleProvider {
         if let Some(ref key) = self.api_key {
             builder = builder.bearer_auth(key);
         }
-        crate::adapters::openai_types::stream_chat(builder, req, &self.model, "openai_compatible").await
+        crate::adapters::openai_types::stream_chat(builder, req, &self.model, "openai_compatible")
+            .await
     }
 
     fn capabilities(&self) -> ProviderCapabilities {

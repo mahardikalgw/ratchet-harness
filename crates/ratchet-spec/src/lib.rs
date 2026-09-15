@@ -10,6 +10,8 @@ pub use error::{SpecError, SpecResult};
 pub use extract::SpecExtractor;
 pub use format::{SpecFile, SpecFrontmatter, SpecSection};
 pub use parser::SpecParser;
-pub use schema::{AcceptanceCriterion, Constraint, Goal, Plan, TaskGraph, TaskNode, VerificationStep};
+pub use schema::{
+    AcceptanceCriterion, Constraint, Goal, Plan, TaskGraph, TaskNode, VerificationStep,
+};
 pub use task::{Task, TaskId, TaskStatus};
 pub use validator::SpecValidator;

@@ -154,7 +154,9 @@ impl TaskGraph {
         }
 
         for node in &self.nodes {
-            if !visited.contains(&node.id) && has_cycle(self, &node.id, &mut visited, &mut rec_stack) {
+            if !visited.contains(&node.id)
+                && has_cycle(self, &node.id, &mut visited, &mut rec_stack)
+            {
                 return Err(SpecError::TaskGraph(format!(
                     "cycle detected in task graph around task {}",
                     node.id.0

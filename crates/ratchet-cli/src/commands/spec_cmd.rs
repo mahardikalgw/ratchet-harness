@@ -44,13 +44,17 @@ pub async fn new_spec(project_dir: &Path, id: &str) -> Result<()> {
         anyhow::bail!("spec '{}' already exists at {:?}", id, path);
     }
 
-    let title = id.split('-').map(|w| {
-        let mut c = w.chars();
-        match c.next() {
-            None => String::new(),
-            Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-        }
-    }).collect::<Vec<_>>().join(" ");
+    let title = id
+        .split('-')
+        .map(|w| {
+            let mut c = w.chars();
+            match c.next() {
+                None => String::new(),
+                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let content = SPEC_TEMPLATE.replace("{id}", id).replace("{title}", &title);
     tokio::fs::write(&path, content).await?;
@@ -60,7 +64,10 @@ pub async fn new_spec(project_dir: &Path, id: &str) -> Result<()> {
 }
 
 pub async fn edit_spec(project_dir: &Path, id: &str) -> Result<()> {
-    let path = project_dir.join(".ratchet").join("spec").join(format!("{}.spec.md", id));
+    let path = project_dir
+        .join(".ratchet")
+        .join("spec")
+        .join(format!("{}.spec.md", id));
     if !path.exists() {
         anyhow::bail!("spec '{}' not found at {:?}", id, path);
     }

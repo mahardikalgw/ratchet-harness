@@ -21,25 +21,27 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.os }}
     strategy:
+      # One target failing must not prevent the others from being published.
       fail-fast: false
       matrix:
         include:
-          # Fully static Linux binaries — run on any distro, including Alpine.
+          # Static Linux binaries (cross-compiled in a container) so the same
+          # artifact runs on glibc and musl distros alike.
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-            archive: tar.gz
+            build: cross
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
-            archive: tar.gz
+            build: cross
           - target: x86_64-apple-darwin
             os: macos-latest
-            archive: tar.gz
+            build: native
           - target: aarch64-apple-darwin
             os: macos-latest
-            archive: tar.gz
+            build: native
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            archive: zip
+            build: native
 
     steps:
       - uses: actions/checkout@v4
@@ -49,41 +51,41 @@ jobs:
           targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Install musl toolchain (x86_64)
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Install cross
+        if: matrix.build == 'cross'
+        uses: taiki-e/install-action@cross
 
-      - name: Install cross toolchain (aarch64 musl)
-        if: matrix.target == 'aarch64-unknown-linux-musl'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu musl-tools
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+      - name: Build (cross)
+        if: matrix.build == 'cross'
+        run: cross build --release --locked --target ${{ matrix.target }} -p ratchet-cli
 
-      - name: Build
+      - name: Build (native)
+        if: matrix.build == 'native'
         run: cargo build --release --locked --target ${{ matrix.target }} -p ratchet-cli
 
       - name: Package (unix)
-        if: matrix.archive == 'tar.gz'
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           set -euo pipefail
-          dist="$BIN_NAME-${{ matrix.target }}"
+          dist="${BIN_NAME}-${{ matrix.target }}"
           mkdir -p "$dist"
-          cp "target/${{ matrix.target }}/release/$BIN_NAME" "$dist/"
-          cp README.md LICENSE* "$dist/" 2>/dev/null || cp README.md "$dist/"
+          cp "target/${{ matrix.target }}/release/${BIN_NAME}" "$dist/"
+          cp README.md LICENSE "$dist/"
           tar -czf "$dist.tar.gz" "$dist"
           echo "ASSET=$dist.tar.gz" >> "$GITHUB_ENV"
 
       - name: Package (windows)
-        if: matrix.archive == 'zip'
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $dist = "$env:BIN_NAME-${{ matrix.target }}"
           New-Item -ItemType Directory -Path $dist | Out-Null
           Copy-Item "target/${{ matrix.target }}/release/$env:BIN_NAME.exe" "$dist/"
-          Copy-Item "README.md" "$dist/"
+          Copy-Item "README.md", "LICENSE" -Destination "$dist/"
           Compress-Archive -Path "$dist/*" -DestinationPath "$dist.zip"
           "ASSET=$dist.zip" | Out-File -FilePath $env:GITHUB_ENV -Append
 
@@ -94,9 +96,11 @@ jobs:
           path: ${{ env.ASSET }}
           if-no-files-found: error
 
-  checksums:
-    name: build install script and checksums
+  publish:
+    name: checksums and release
     needs: build
+    # Publish whatever built successfully, even if one target failed.
+    if: always() && needs.build.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -107,14 +111,24 @@ jobs:
           path: dist
           merge-multiple: true
 
+      - name: Fail if nothing was built
+        run: |
+          set -euo pipefail
+          count=$(find dist -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' \) | wc -l)
+          echo "packaged assets: $count"
+          if [ "$count" -eq 0 ]; then
+            echo "::error::no release assets were produced"
+            exit 1
+          fi
+
       - name: Generate SHA256SUMS
         working-directory: dist
         run: |
           set -euo pipefail
-          sha256sum * > SHA256SUMS
+          sha256sum *.tar.gz *.zip > SHA256SUMS
           cat SHA256SUMS
 
-      - name: Store install script alongside the release
+      - name: Include the install script
         run: cp install.sh dist/install.sh
 
       - name: Publish release

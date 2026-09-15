@@ -63,7 +63,10 @@ impl MetricsStore {
     }
 
     /// Load records and aggregate everything since `since`.
-    pub async fn aggregate_since(&self, since: DateTime<Utc>) -> ObservabilityResult<UsageAggregate> {
+    pub async fn aggregate_since(
+        &self,
+        since: DateTime<Utc>,
+    ) -> ObservabilityResult<UsageAggregate> {
         let metrics = self.load_all().await?;
         Ok(UsageAggregate::from_metrics(&metrics, since))
     }

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ratchet_spec::{TaskGraph};
+use ratchet_spec::TaskGraph;
 use std::path::Path;
 
 pub async fn run(project_dir: &Path, spec_id: &str, edit: bool) -> Result<()> {

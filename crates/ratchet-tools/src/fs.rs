@@ -1,4 +1,4 @@
-use crate::{error::ToolResult, path::resolve_path, ToolContext};
+use crate::{ToolContext, error::ToolResult, path::resolve_path};
 use serde_json::Value;
 
 pub struct FileRead;
@@ -12,13 +12,16 @@ impl FileRead {
         offset: Option<usize>,
     ) -> ToolResult<Value> {
         let full_path = resolve_path(&ctx.cwd, path);
-        ctx.sandbox.check_read(&full_path)
+        ctx.sandbox
+            .check_read(&full_path)
             .map_err(|e| crate::error::ToolError::SandboxViolation(e.to_string()))?;
 
         let content = tokio::fs::read_to_string(&full_path).await?;
         let lines: Vec<&str> = content.lines().collect();
         let start = offset.unwrap_or(0).saturating_sub(1);
-        let end = limit.map(|l| (start + l).min(lines.len())).unwrap_or(lines.len());
+        let end = limit
+            .map(|l| (start + l).min(lines.len()))
+            .unwrap_or(lines.len());
         let selected: Vec<String> = lines[start..end].iter().map(|s| s.to_string()).collect();
 
         Ok(serde_json::json!({
@@ -33,14 +36,10 @@ impl FileRead {
 pub struct FileWrite;
 
 impl FileWrite {
-    pub async fn execute(
-        &self,
-        ctx: &ToolContext,
-        path: &str,
-        content: &str,
-    ) -> ToolResult<Value> {
+    pub async fn execute(&self, ctx: &ToolContext, path: &str, content: &str) -> ToolResult<Value> {
         let full_path = resolve_path(&ctx.cwd, path);
-        ctx.sandbox.check_write(&full_path)
+        ctx.sandbox
+            .check_write(&full_path)
             .map_err(|e| crate::error::ToolError::SandboxViolation(e.to_string()))?;
 
         if let Some(parent) = full_path.parent() {
@@ -66,7 +65,8 @@ impl FilePatch {
         new_text: &str,
     ) -> ToolResult<Value> {
         let full_path = resolve_path(&ctx.cwd, path);
-        ctx.sandbox.check_write(&full_path)
+        ctx.sandbox
+            .check_write(&full_path)
             .map_err(|e| crate::error::ToolError::SandboxViolation(e.to_string()))?;
 
         let content = tokio::fs::read_to_string(&full_path).await?;

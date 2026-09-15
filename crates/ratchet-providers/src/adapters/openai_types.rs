@@ -186,7 +186,9 @@ impl OpenAiCompatibleRequest {
     pub fn streaming(req: ChatRequest, model: &str) -> Self {
         let mut body = Self::from_chat_request(req, model);
         body.stream = Some(true);
-        body.stream_options = Some(StreamOptions { include_usage: true });
+        body.stream_options = Some(StreamOptions {
+            include_usage: true,
+        });
         body
     }
 }
@@ -237,7 +239,9 @@ struct OpenAiStreamFunction {
 
 /// Parse one `data:` payload from an OpenAI-compatible SSE stream.
 /// Returns `None` for the `[DONE]` sentinel.
-pub fn parse_openai_sse(data: &str) -> Option<crate::ProviderResult<crate::traits::ChatStreamChunk>> {
+pub fn parse_openai_sse(
+    data: &str,
+) -> Option<crate::ProviderResult<crate::traits::ChatStreamChunk>> {
     use crate::traits::{ChatStreamChunk, TokenUsage, ToolCallDelta};
 
     let data = data.trim();
@@ -266,10 +270,7 @@ pub fn parse_openai_sse(data: &str) -> Option<crate::ProviderResult<crate::trait
                     index: tc.index,
                     id: tc.id,
                     name: tc.function.as_ref().and_then(|f| f.name.clone()),
-                    arguments_delta: tc
-                        .function
-                        .and_then(|f| f.arguments)
-                        .unwrap_or_default(),
+                    arguments_delta: tc.function.and_then(|f| f.arguments).unwrap_or_default(),
                 })
                 .collect();
             (c.delta.content.unwrap_or_default(), deltas, c.finish_reason)
@@ -292,9 +293,7 @@ pub fn parse_openai_sse(data: &str) -> Option<crate::ProviderResult<crate::trait
 }
 
 /// Turn an HTTP byte stream into a `ChatStream` of parsed chunks.
-pub fn stream_from_response(
-    response: reqwest::Response,
-) -> ChatStream {
+pub fn stream_from_response(response: reqwest::Response) -> ChatStream {
     use eventsource_stream::Eventsource;
 
     let stream = response

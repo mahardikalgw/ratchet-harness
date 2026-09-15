@@ -1,4 +1,6 @@
+use crate::delegation::provider_for_role;
 use crate::{
+    CoreResult,
     config::ProjectConfig,
     delegation::AgentRole,
     error::CoreError,
@@ -12,18 +14,16 @@ use crate::{
         CommandOutcome, CriterionStatus, PluginVerdict, VerificationEngine, VerificationEvidence,
         VerificationReport,
     },
-    CoreResult,
 };
 use ratchet_mcp::{client::McpClientRegistry, types::McpTool};
-use ratchet_plugins::{GateCriterion, GateRequest, GateStatus, PluginHost};
 use ratchet_memory::{MemoryEntry, MemoryKind, ProjectMemory};
-use ratchet_observability::{metrics_path, MetricsStore, TaskMetrics};
-use crate::delegation::provider_for_role;
+use ratchet_observability::{MetricsStore, TaskMetrics, metrics_path};
+use ratchet_plugins::{GateCriterion, GateRequest, GateStatus, PluginHost};
 use ratchet_providers::{ModelProvider, RetryPolicy};
 use ratchet_sandbox::{ApprovalHandler, AutoDeny, SandboxGuard};
 use ratchet_spec::{
-    schema::{Plan, SpecSchema},
     SpecExtractor, SpecFile,
+    schema::{Plan, SpecSchema},
 };
 use ratchet_tools::{TestRunner, ToolContext, ToolRegistry};
 use std::collections::HashMap;
@@ -133,7 +133,10 @@ impl AgentHarness {
 
     async fn connect_mcp(
         config: &ProjectConfig,
-    ) -> (Option<Arc<Mutex<McpClientRegistry>>>, Vec<(String, McpTool)>) {
+    ) -> (
+        Option<Arc<Mutex<McpClientRegistry>>>,
+        Vec<(String, McpTool)>,
+    ) {
         if config.mcp.servers.is_empty() {
             return (None, Vec::new());
         }
@@ -225,11 +228,7 @@ impl AgentHarness {
         self.plan(spec).await
     }
 
-    pub async fn run(
-        &mut self,
-        plan: &Plan,
-        spec: &SpecFile,
-    ) -> CoreResult<RunReport> {
+    pub async fn run(&mut self, plan: &Plan, spec: &SpecFile) -> CoreResult<RunReport> {
         self.run_with(plan, spec, RunOverrides::default()).await
     }
 
@@ -525,7 +524,11 @@ impl AgentHarness {
     }
 
     /// Record one metric per task, tagged with the verification outcome.
-    async fn persist_metrics(&self, results: &[ExecutionResult], verification: &VerificationReport) {
+    async fn persist_metrics(
+        &self,
+        results: &[ExecutionResult],
+        verification: &VerificationReport,
+    ) {
         for result in results {
             let metric = TaskMetrics {
                 task_id: result.task_id.0.clone(),
@@ -571,7 +574,10 @@ impl AgentHarness {
                 kind,
                 content: format!(
                     "task {} ({}) via {}: {}",
-                    result.task_id, result.status_str(), result.provider, summary
+                    result.task_id,
+                    result.status_str(),
+                    result.provider,
+                    summary
                 ),
                 tags: vec![
                     spec.frontmatter.id.clone(),
@@ -604,9 +610,9 @@ async fn write_artifact(path: &std::path::Path, contents: impl AsRef<[u8]>) -> C
             })?;
         }
     }
-    tokio::fs::write(path, contents).await.map_err(|e| {
-        CoreError::Execution(format!("failed to write {}: {e}", path.display()))
-    })
+    tokio::fs::write(path, contents)
+        .await
+        .map_err(|e| CoreError::Execution(format!("failed to write {}: {e}", path.display())))
 }
 
 fn first_lines(text: &str, n: usize) -> String {
@@ -644,7 +650,11 @@ pub fn render_report(report: &VerificationReport) -> String {
         "# Verification Report: {}\n\n**Overall:** {}\n\n**Summary:** {}\n\n\
          | Criterion | Status | Note |\n|---|---|---|\n",
         report.spec_id,
-        if report.overall_passed { "✅ PASSED" } else { "❌ FAILED" },
+        if report.overall_passed {
+            "✅ PASSED"
+        } else {
+            "❌ FAILED"
+        },
         report.summary,
     );
 

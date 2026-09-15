@@ -5,7 +5,9 @@ fn initialize_request_round_trips() {
     let req = InitializeRequest {
         protocol_version: MCP_PROTOCOL_VERSION.to_string(),
         capabilities: ClientCapabilities {
-            tools: Some(ToolsCapability { list_changed: false }),
+            tools: Some(ToolsCapability {
+                list_changed: false,
+            }),
             resources: None,
         },
         client_info: Implementation {

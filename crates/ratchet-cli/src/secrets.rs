@@ -30,8 +30,8 @@ pub fn resolve_secret(provider: &str, env_var: Option<&str>) -> Option<String> {
 
 /// Store a credential in the OS keychain.
 pub fn store_secret(provider: &str, secret: &str) -> anyhow::Result<()> {
-    let entry = Entry::new(SERVICE, provider)
-        .map_err(|e| anyhow::anyhow!("keychain unavailable: {e}"))?;
+    let entry =
+        Entry::new(SERVICE, provider).map_err(|e| anyhow::anyhow!("keychain unavailable: {e}"))?;
     entry
         .set_password(secret)
         .map_err(|e| anyhow::anyhow!("failed to store credential: {e}"))?;
@@ -40,8 +40,8 @@ pub fn store_secret(provider: &str, secret: &str) -> anyhow::Result<()> {
 
 /// Remove a stored credential from the OS keychain.
 pub fn delete_secret(provider: &str) -> anyhow::Result<()> {
-    let entry = Entry::new(SERVICE, provider)
-        .map_err(|e| anyhow::anyhow!("keychain unavailable: {e}"))?;
+    let entry =
+        Entry::new(SERVICE, provider).map_err(|e| anyhow::anyhow!("keychain unavailable: {e}"))?;
     match entry.delete_credential() {
         Ok(()) => Ok(()),
         Err(keyring::Error::NoEntry) => Ok(()),
@@ -52,7 +52,10 @@ pub fn delete_secret(provider: &str) -> anyhow::Result<()> {
 /// Where a credential came from, for user-facing diagnostics.
 pub fn describe_source(provider: &str, env_var: Option<&str>) -> &'static str {
     if let Some(var) = env_var {
-        if std::env::var(var).map(|v| !v.trim().is_empty()).unwrap_or(false) {
+        if std::env::var(var)
+            .map(|v| !v.trim().is_empty())
+            .unwrap_or(false)
+        {
             return "environment";
         }
     }

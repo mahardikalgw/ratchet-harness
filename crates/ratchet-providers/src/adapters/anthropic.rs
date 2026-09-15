@@ -19,18 +19,22 @@ pub struct AnthropicProvider {
 
 impl AnthropicProvider {
     pub fn new(config: super::ProviderConfig) -> ProviderResult<Self> {
-        let api_key = config.api_key.ok_or_else(|| {
-            ProviderError::Config("Anthropic API key required".into())
-        })?;
+        let api_key = config
+            .api_key
+            .ok_or_else(|| ProviderError::Config("Anthropic API key required".into()))?;
         Ok(Self {
             client: Client::builder()
-                .timeout(std::time::Duration::from_secs(config.timeout_secs.unwrap_or(120)))
+                .timeout(std::time::Duration::from_secs(
+                    config.timeout_secs.unwrap_or(120),
+                ))
                 .build()?,
             api_key,
-            base_url: config.base_url.unwrap_or_else(|| {
-                "https://api.anthropic.com/v1".to_string()
-            }),
-            model: config.model.unwrap_or_else(|| "claude-sonnet-4-20250514".to_string()),
+            base_url: config
+                .base_url
+                .unwrap_or_else(|| "https://api.anthropic.com/v1".to_string()),
+            model: config
+                .model
+                .unwrap_or_else(|| "claude-sonnet-4-20250514".to_string()),
         })
     }
 }
@@ -61,9 +65,10 @@ impl ModelProvider for AnthropicProvider {
             });
         }
 
-        let anthropic_resp: AnthropicResponse = response.json().await.map_err(|e| {
-            ProviderError::api("anthropic", 200, e.to_string())
-        })?;
+        let anthropic_resp: AnthropicResponse = response
+            .json()
+            .await
+            .map_err(|e| ProviderError::api("anthropic", 200, e.to_string()))?;
 
         let content = anthropic_resp
             .content
@@ -230,10 +235,17 @@ enum ContentBlock {
     #[serde(rename = "text")]
     Text { text: String },
     #[serde(rename = "tool_use")]
-    ToolUse { id: String, name: String, input: serde_json::Value },
+    ToolUse {
+        id: String,
+        name: String,
+        input: serde_json::Value,
+    },
     #[serde(rename = "tool_result")]
     #[allow(dead_code)]
-    ToolResult { tool_use_id: String, content: String },
+    ToolResult {
+        tool_use_id: String,
+        content: String,
+    },
 }
 
 #[derive(Deserialize)]
@@ -414,8 +426,14 @@ pub fn parse_anthropic_sse(data: &str) -> Option<ProviderResult<ChatStreamChunk>
         "message_start" => {
             if let Some(usage) = value.get("message").and_then(|m| m.get("usage")) {
                 chunk.usage = Some(TokenUsage {
-                    input_tokens: usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
-                    output_tokens: usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+                    input_tokens: usage
+                        .get("input_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0),
+                    output_tokens: usage
+                        .get("output_tokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0),
                     cached_tokens: usage
                         .get("cache_read_input_tokens")
                         .and_then(|v| v.as_u64())

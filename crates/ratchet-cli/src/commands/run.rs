@@ -98,8 +98,13 @@ pub async fn run(
     for r in &report.results {
         println!(
             "   {} | {} | {} turn(s) | ${:.4} | {} in / {} out | {}",
-            r.task_id, r.status_str(), r.turns, r.cost_usd,
-            r.usage.input_tokens, r.usage.output_tokens, r.provider
+            r.task_id,
+            r.status_str(),
+            r.turns,
+            r.cost_usd,
+            r.usage.input_tokens,
+            r.usage.output_tokens,
+            r.provider
         );
     }
 

@@ -46,7 +46,9 @@ impl RetryPolicy {
         if failures >= self.max_attempts {
             return None;
         }
-        let exp = self.initial_backoff.mul_f64(self.multiplier.powi(failures as i32 - 1));
+        let exp = self
+            .initial_backoff
+            .mul_f64(self.multiplier.powi(failures as i32 - 1));
         let capped = exp.min(self.max_backoff);
         Some(if self.jitter {
             capped + self.jitter_for(failures)
@@ -183,15 +185,11 @@ impl ModelProvider for FailoverProvider {
     }
 
     fn capabilities(&self) -> ProviderCapabilities {
-        self.primary()
-            .map(|p| p.capabilities())
-            .unwrap_or_default()
+        self.primary().map(|p| p.capabilities()).unwrap_or_default()
     }
 
     fn cost_model(&self) -> CostModel {
-        self.primary()
-            .map(|p| p.cost_model())
-            .unwrap_or_default()
+        self.primary().map(|p| p.cost_model()).unwrap_or_default()
     }
 
     fn name(&self) -> &str {

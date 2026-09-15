@@ -1,4 +1,4 @@
-use crate::{config::RoutingPolicy, CoreResult};
+use crate::{CoreResult, config::RoutingPolicy};
 use ratchet_providers::{CostModel, ModelProvider, ProviderCapabilities};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -57,7 +57,9 @@ impl Router {
     /// All providers in preference order, so the caller can fail over.
     pub fn route_all(&self, req: &RoutingRequest) -> CoreResult<Vec<RoutingResult>> {
         if self.providers.is_empty() {
-            return Err(crate::CoreError::NoProvider("no providers configured".into()));
+            return Err(crate::CoreError::NoProvider(
+                "no providers configured".into(),
+            ));
         }
 
         let mut ranked: Vec<RoutingResult> = Vec::new();
@@ -123,12 +125,7 @@ impl Router {
         match self.policy {
             RoutingPolicy::Fixed => pool
                 .iter()
-                .map(|(n, p)| {
-                    (
-                        (*n).clone(),
-                        format!("fixed default ({})", p.name()),
-                    )
-                })
+                .map(|(n, p)| ((*n).clone(), format!("fixed default ({})", p.name())))
                 .collect(),
 
             RoutingPolicy::CapabilityThenCost => {
@@ -182,11 +179,7 @@ impl Router {
         }
     }
 
-    fn meets_requirements(
-        &self,
-        caps: ProviderCapabilities,
-        req: &RequiredCapabilities,
-    ) -> bool {
+    fn meets_requirements(&self, caps: ProviderCapabilities, req: &RequiredCapabilities) -> bool {
         (!req.needs_tools || caps.supports_tools)
             && (!req.needs_vision || caps.supports_vision)
             && (!req.needs_extended_thinking || caps.supports_extended_thinking)
@@ -213,7 +206,8 @@ impl Router {
 
         score += (caps.max_context_tokens as f64 / 10_000.0).min(5.0);
 
-        let avg_cost = (cost.usd_per_million_input_tokens + cost.usd_per_million_output_tokens) / 2.0;
+        let avg_cost =
+            (cost.usd_per_million_input_tokens + cost.usd_per_million_output_tokens) / 2.0;
         score -= avg_cost * 2.0;
 
         score

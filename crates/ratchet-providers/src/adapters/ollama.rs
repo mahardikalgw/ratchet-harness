@@ -18,11 +18,13 @@ impl OllamaProvider {
     pub fn new(config: super::ProviderConfig) -> ProviderResult<Self> {
         Ok(Self {
             client: Client::builder()
-                .timeout(std::time::Duration::from_secs(config.timeout_secs.unwrap_or(600)))
+                .timeout(std::time::Duration::from_secs(
+                    config.timeout_secs.unwrap_or(600),
+                ))
                 .build()?,
-            base_url: config.base_url.unwrap_or_else(|| {
-                "http://localhost:11434".to_string()
-            }),
+            base_url: config
+                .base_url
+                .unwrap_or_else(|| "http://localhost:11434".to_string()),
             model: config.model.unwrap_or_else(|| "llama3.1".to_string()),
         })
     }
@@ -56,9 +58,10 @@ impl ModelProvider for OllamaProvider {
             return Err(ProviderError::api("ollama", status.as_u16(), text));
         }
 
-        let resp: OllamaResponse = response.json().await.map_err(|e| {
-            ProviderError::api("ollama", 200, format!("malformed response: {e}"))
-        })?;
+        let resp: OllamaResponse = response
+            .json()
+            .await
+            .map_err(|e| ProviderError::api("ollama", 200, format!("malformed response: {e}")))?;
 
         let tool_calls = resp
             .message

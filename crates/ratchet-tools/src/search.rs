@@ -1,4 +1,4 @@
-use crate::{error::ToolResult, path::resolve_path, ToolContext};
+use crate::{ToolContext, error::ToolResult, path::resolve_path};
 use serde_json::Value;
 
 pub struct ListDir;
@@ -134,7 +134,14 @@ pub fn repo_map(cwd: &std::path::Path, max_entries: usize) -> String {
 /// Breadth-first walk that skips VCS/build directories and oversized files.
 fn walk_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
     const SKIP: &[&str] = &[
-        ".git", "target", "node_modules", ".ratchet", "dist", "build", ".venv", "__pycache__",
+        ".git",
+        "target",
+        "node_modules",
+        ".ratchet",
+        "dist",
+        "build",
+        ".venv",
+        "__pycache__",
     ];
     const MAX_FILES: usize = 5000;
     const MAX_DEPTH: usize = 8;

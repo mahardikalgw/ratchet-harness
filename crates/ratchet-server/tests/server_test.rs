@@ -1,12 +1,12 @@
 use async_trait::async_trait;
-use ratchet_a2a::{AgentCard, A2aResult, Task, TaskSendParams, TaskState, TaskStatus};
+use ratchet_a2a::{A2aResult, AgentCard, Task, TaskSendParams, TaskState, TaskStatus};
 use ratchet_server::{
     a2a::{A2aDispatcher, A2aHandler},
-    dashboard::{render_dashboard, DashboardSource},
+    dashboard::{DashboardSource, render_dashboard},
     http::HttpResponse,
     server::RatchetServer,
 };
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -59,7 +59,9 @@ impl A2aHandler for EchoAgent {
     }
 
     async fn cancel(&self, _id: &str) -> A2aResult<Task> {
-        Err(ratchet_a2a::A2aError::NotCancelable("completed".to_string()))
+        Err(ratchet_a2a::A2aError::NotCancelable(
+            "completed".to_string(),
+        ))
     }
 }
 
@@ -122,7 +124,10 @@ async fn send_returns_a_task_and_get_finds_it() {
 #[tokio::test]
 async fn get_unknown_task_is_an_error() {
     let d = dispatcher();
-    let err = d.handle("tasks/get", json!({"id": "nope"})).await.unwrap_err();
+    let err = d
+        .handle("tasks/get", json!({"id": "nope"}))
+        .await
+        .unwrap_err();
     assert_eq!(err.code(), -32001);
 }
 
@@ -212,7 +217,10 @@ fn dashboard_handles_empty_state() {
 #[test]
 fn responses_carry_correct_reasons() {
     assert_eq!(HttpResponse::not_found().reason(), "Not Found");
-    assert_eq!(HttpResponse::method_not_allowed().reason(), "Method Not Allowed");
+    assert_eq!(
+        HttpResponse::method_not_allowed().reason(),
+        "Method Not Allowed"
+    );
     assert_eq!(HttpResponse::json(&json!({})).reason(), "OK");
 }
 
@@ -278,14 +286,19 @@ async fn serves_card_dashboard_and_a2a_over_http() {
     handle.abort();
 
     async fn http_get(port: u16, path: &str) -> String {
-        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
-        let request = format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
+        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
+        let request =
+            format!("GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n");
         stream.write_all(request.as_bytes()).await.unwrap();
         read_body(&mut stream).await
     }
 
     async fn http_post(port: u16, path: &str, body: &str) -> String {
-        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port)).await.unwrap();
+        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .unwrap();
         let request = format!(
             "POST {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\n\
              Content-Length: {}\r\nConnection: close\r\n\r\n{body}",

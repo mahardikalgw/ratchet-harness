@@ -1,8 +1,8 @@
 use anyhow::Result;
 use ratchet_core::{AgentHarness, ProjectConfig};
 use ratchet_providers::{
-    adapters::{create_provider, ProviderConfig},
     ModelProvider,
+    adapters::{ProviderConfig, create_provider},
 };
 use std::collections::HashMap;
 use std::path::Path;

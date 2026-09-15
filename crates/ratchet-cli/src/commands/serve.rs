@@ -1,9 +1,9 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use ratchet_acp::{
+    AcpResult,
     server::{AcpHandler, AcpServer},
     types as acp,
-    AcpResult,
 };
 use ratchet_core::AgentHarness;
 use ratchet_spec::SpecParser;
@@ -107,7 +107,8 @@ impl AcpHandler for ServingHarness {
                 .map_err(|e| ratchet_acp::AcpError::Agent(e.to_string()))?
         };
 
-        self.set_status(&run_id, acp::RunStatus::Started, None).await;
+        self.set_status(&run_id, acp::RunStatus::Started, None)
+            .await;
 
         // Run in the background so the JSON-RPC connection stays responsive.
         let inner = Arc::clone(&self.inner);
@@ -159,14 +160,11 @@ impl AcpHandler for ServingHarness {
 
     async fn status(&self, run_id: &str) -> AcpResult<acp::AgentRunResult> {
         let runs = self.runs.lock().await;
-        Ok(runs
-            .get(run_id)
-            .cloned()
-            .unwrap_or(acp::AgentRunResult {
-                run_id: run_id.to_string(),
-                status: acp::RunStatus::Failed,
-                message: Some("unknown run id".to_string()),
-            }))
+        Ok(runs.get(run_id).cloned().unwrap_or(acp::AgentRunResult {
+            run_id: run_id.to_string(),
+            status: acp::RunStatus::Failed,
+            message: Some("unknown run id".to_string()),
+        }))
     }
 }
 

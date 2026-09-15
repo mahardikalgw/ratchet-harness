@@ -17,12 +17,14 @@ pub struct MiMoProvider {
 
 impl MiMoProvider {
     pub fn new(config: super::ProviderConfig) -> ProviderResult<Self> {
-        let api_key = config.api_key.ok_or_else(|| {
-            ProviderError::Config("MiMo API key required".into())
-        })?;
+        let api_key = config
+            .api_key
+            .ok_or_else(|| ProviderError::Config("MiMo API key required".into()))?;
         Ok(Self {
             client: Client::builder()
-                .timeout(std::time::Duration::from_secs(config.timeout_secs.unwrap_or(120)))
+                .timeout(std::time::Duration::from_secs(
+                    config.timeout_secs.unwrap_or(120),
+                ))
                 .build()?,
             api_key,
             base_url: config.base_url.unwrap_or_else(|| {
@@ -50,17 +52,25 @@ impl ModelProvider for MiMoProvider {
 
         let resp: OpenAiCompatibleResponse =
             crate::adapters::openai_types::parse_completion_response("mimo", response).await?;
-        let choice = resp.choices.into_iter().next().ok_or_else(|| {
-            ProviderError::api("mimo", 200, "no choices returned")
-        })?;
+        let choice = resp
+            .choices
+            .into_iter()
+            .next()
+            .ok_or_else(|| ProviderError::api("mimo", 200, "no choices returned"))?;
 
         Ok(ChatResponse {
             content: choice.message.content.unwrap_or_default(),
-            tool_calls: choice.message.tool_calls.unwrap_or_default().into_iter().map(|tc| ToolCall {
-                id: tc.id,
-                name: tc.function.name,
-                arguments: serde_json::from_str(&tc.function.arguments).unwrap_or_default(),
-            }).collect(),
+            tool_calls: choice
+                .message
+                .tool_calls
+                .unwrap_or_default()
+                .into_iter()
+                .map(|tc| ToolCall {
+                    id: tc.id,
+                    name: tc.function.name,
+                    arguments: serde_json::from_str(&tc.function.arguments).unwrap_or_default(),
+                })
+                .collect(),
             usage: TokenUsage {
                 input_tokens: resp.usage.prompt_tokens,
                 output_tokens: resp.usage.completion_tokens,

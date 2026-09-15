@@ -227,7 +227,10 @@ async fn run_plugin(
     let stdout = String::from_utf8_lossy(&output.stdout);
     serde_json::from_str(stdout.trim()).map_err(|e| PluginError::InvalidResponse {
         plugin: manifest.name.clone(),
-        message: format!("{e} (raw: {})", stdout.chars().take(200).collect::<String>()),
+        message: format!(
+            "{e} (raw: {})",
+            stdout.chars().take(200).collect::<String>()
+        ),
     })
 }
 

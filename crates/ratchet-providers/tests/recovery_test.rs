@@ -21,7 +21,8 @@ fn recovers_fenced_array_of_tool_calls() {
 
 #[test]
 fn recovers_bare_array_without_fence() {
-    let text = "I will read the file [{\"name\":\"file_read\",\"arguments\":{\"path\":\"src/lib.rs\"}}]";
+    let text =
+        "I will read the file [{\"name\":\"file_read\",\"arguments\":{\"path\":\"src/lib.rs\"}}]";
     let calls = recover_tool_calls(text, &known());
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].name, "file_read");
@@ -41,7 +42,10 @@ fn recovers_string_encoded_arguments() {
     let text = r#"{"name":"file_write","arguments":"{\"path\":\"a.txt\",\"content\":\"hi\"}"}"#;
     let calls = recover_tool_calls(text, &known());
     assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0].arguments, json!({"path": "a.txt", "content": "hi"}));
+    assert_eq!(
+        calls[0].arguments,
+        json!({"path": "a.txt", "content": "hi"})
+    );
 }
 
 #[test]
@@ -96,5 +100,10 @@ fn recovers_when_braces_appear_inside_strings() {
     let text = r#"[{"name":"file_write","arguments":{"path":"a.txt","content":"fn main() { println!(\"hi\"); }"}}]"#;
     let calls = recover_tool_calls(text, &known());
     assert_eq!(calls.len(), 1);
-    assert!(calls[0].arguments["content"].as_str().unwrap().contains("println!"));
+    assert!(
+        calls[0].arguments["content"]
+            .as_str()
+            .unwrap()
+            .contains("println!")
+    );
 }

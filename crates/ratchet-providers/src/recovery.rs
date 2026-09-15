@@ -55,7 +55,10 @@ fn collect_from_value(value: &Value, known: &[String], out: &mut Vec<RecoveredTo
     }
 }
 
-fn parse_tool_call(map: &serde_json::Map<String, Value>, known: &[String]) -> Option<RecoveredToolCall> {
+fn parse_tool_call(
+    map: &serde_json::Map<String, Value>,
+    known: &[String],
+) -> Option<RecoveredToolCall> {
     // `function` may be a nested object (OpenAI style) or absent.
     let (name, args_source) = if let Some(func) = map.get("function").and_then(|f| f.as_object()) {
         let name = func.get("name").and_then(|v| v.as_str())?;

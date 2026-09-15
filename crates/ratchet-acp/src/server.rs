@@ -1,7 +1,4 @@
-use crate::{
-    error::AcpResult,
-    types::*,
-};
+use crate::{error::AcpResult, types::*};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
@@ -44,10 +41,7 @@ impl AcpServer {
     }
 }
 
-async fn handle_connection(
-    stream: TcpStream,
-    handler: Arc<dyn AcpHandler>,
-) -> AcpResult<()> {
+async fn handle_connection(stream: TcpStream, handler: Arc<dyn AcpHandler>) -> AcpResult<()> {
     let (reader, mut writer) = stream.into_split();
     let mut reader = BufReader::new(reader);
     let mut line = String::new();
@@ -175,11 +169,7 @@ fn parse_params<T: serde::de::DeserializeOwned>(
     }
 }
 
-fn error_response(
-    id: Option<serde_json::Value>,
-    code: i32,
-    message: String,
-) -> JsonRpcResponse {
+fn error_response(id: Option<serde_json::Value>, code: i32, message: String) -> JsonRpcResponse {
     JsonRpcResponse {
         jsonrpc: "2.0".to_string(),
         id,

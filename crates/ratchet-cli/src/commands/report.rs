@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{Duration, Utc};
-use ratchet_observability::{metrics_path, MetricsStore, ReportFormat, Reporter};
+use ratchet_observability::{MetricsStore, ReportFormat, Reporter, metrics_path};
 use std::path::Path;
 
 pub async fn run(project_dir: &Path, format: ReportFormat, since_days: u64) -> Result<()> {

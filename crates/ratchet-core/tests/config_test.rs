@@ -15,9 +15,18 @@ fn empty_sections_are_not_serialised() {
     let config = ProjectConfig::scaffold("demo");
     let text = toml::to_string_pretty(&config).unwrap();
 
-    assert!(!text.contains("[delegation]"), "unexpected empty delegation table:\n{text}");
-    assert!(!text.contains("[mcp.servers]"), "unexpected empty mcp table:\n{text}");
-    assert!(!text.contains("plugins = []"), "unexpected empty plugins key:\n{text}");
+    assert!(
+        !text.contains("[delegation]"),
+        "unexpected empty delegation table:\n{text}"
+    );
+    assert!(
+        !text.contains("[mcp.servers]"),
+        "unexpected empty mcp table:\n{text}"
+    );
+    assert!(
+        !text.contains("plugins = []"),
+        "unexpected empty plugins key:\n{text}"
+    );
 }
 
 #[test]
@@ -43,9 +52,7 @@ fn appended_delegation_table_parses() {
     // Regression: the generated file must not already contain `[delegation]`,
     // so appending one is valid TOML.
     let base = toml::to_string_pretty(&ProjectConfig::scaffold("demo")).unwrap();
-    let with_delegation = format!(
-        "{base}\n[delegation]\nreview = true\nmax_review_rounds = 3\n"
-    );
+    let with_delegation = format!("{base}\n[delegation]\nreview = true\nmax_review_rounds = 3\n");
 
     let parsed: ProjectConfig = toml::from_str(&with_delegation).unwrap();
     assert!(parsed.delegation.review);

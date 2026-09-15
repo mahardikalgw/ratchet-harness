@@ -1,5 +1,5 @@
 use ratchet_spec::SpecExtractor;
-use ratchet_spec::{schema::VerificationStep, SpecParser};
+use ratchet_spec::{SpecParser, schema::VerificationStep};
 
 const SPEC: &str = r#"---
 id: auth

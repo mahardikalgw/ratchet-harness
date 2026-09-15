@@ -78,7 +78,9 @@ pub struct CostTracker {
 
 impl CostTracker {
     pub fn new() -> Self {
-        Self { metrics: Vec::new() }
+        Self {
+            metrics: Vec::new(),
+        }
     }
 
     pub fn record(&mut self, metric: TaskMetrics) {

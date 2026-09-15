@@ -17,11 +17,17 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
     let intent_md = project_dir.join(".ratchet").join("intent.md");
     tokio::fs::write(
         &intent_md,
-        format!("# Intent: {}\n\nDescribe what you want to build here.\n", name),
+        format!(
+            "# Intent: {}\n\nDescribe what you want to build here.\n",
+            name
+        ),
     )
     .await?;
 
-    println!("✅ Initialized Ratchet project '{}' at {:?}", name, project_dir);
+    println!(
+        "✅ Initialized Ratchet project '{}' at {:?}",
+        name, project_dir
+    );
     println!("   Config: {:?}", config_path);
     println!("   Ratchet dir: {:?}", ratchet_dir);
     println!("\nNext steps:");

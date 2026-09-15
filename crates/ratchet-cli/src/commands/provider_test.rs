@@ -1,6 +1,10 @@
 use anyhow::Result;
 use ratchet_core::ProjectConfig;
-use ratchet_providers::{adapters::{create_provider, ProviderConfig}, traits::*, types::*};
+use ratchet_providers::{
+    adapters::{ProviderConfig, create_provider},
+    traits::*,
+    types::*,
+};
 use std::path::Path;
 
 use crate::secrets::resolve_secret;
@@ -37,8 +41,10 @@ pub async fn run(project_dir: &Path, name: Option<String>) -> Result<()> {
         let credential = resolve_secret(&name, settings.api_key_env.as_deref());
 
         if credential.is_none() && settings.api_key_env.is_some() {
-            println!("✗ {name}: no credential found (env ${} or keychain)",
-                settings.api_key_env.as_deref().unwrap_or("-"));
+            println!(
+                "✗ {name}: no credential found (env ${} or keychain)",
+                settings.api_key_env.as_deref().unwrap_or("-")
+            );
             failures += 1;
             continue;
         }
@@ -108,16 +114,18 @@ fn hint_for(error: &ratchet_providers::ProviderError) -> Option<&'static str> {
             "the endpoint rejected the credential — check that the key is valid, \
              not expired, and belongs to this provider (and re-run `ratchet provider login`)",
         ),
-        E::Http(e) if e.is_connect() => Some(
-            "could not reach the host — check `base_url`; a guessed host will not resolve",
-        ),
-        E::Api { status: Some(404), .. } => Some(
+        E::Http(e) if e.is_connect() => {
+            Some("could not reach the host — check `base_url`; a guessed host will not resolve")
+        }
+        E::Api {
+            status: Some(404), ..
+        } => Some(
             "404 usually means the base URL is wrong (it should include the `/v1` suffix \
              for OpenAI-compatible providers)",
         ),
-        E::Api { status: Some(400), .. } => Some(
-            "400 often means the model name is wrong — set `model` explicitly",
-        ),
+        E::Api {
+            status: Some(400), ..
+        } => Some("400 often means the model name is wrong — set `model` explicitly"),
         _ => None,
     }
 }

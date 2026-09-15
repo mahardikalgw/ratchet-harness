@@ -1,6 +1,6 @@
 use crate::CoreResult;
-use ratchet_spec::schema::{SpecSchema, VerificationStep};
 use ratchet_spec::AcceptanceCriterion;
+use ratchet_spec::schema::{SpecSchema, VerificationStep};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -123,7 +123,10 @@ impl VerificationEngine {
         }
 
         let (status, note) = match &criterion.verification {
-            Some(VerificationStep::Test { command, expected: _ }) => {
+            Some(VerificationStep::Test {
+                command,
+                expected: _,
+            }) => {
                 match evidence.command_results.get(command) {
                     // The command's exit status is authoritative. `expected` is
                     // advisory only: models routinely emit prose there, and a
@@ -143,21 +146,27 @@ impl VerificationEngine {
                     }
                     Some(outcome) => (
                         CriterionStatus::Failed,
-                        format!("`{command}` exited non-zero: {}", first_line(&outcome.output)),
+                        format!(
+                            "`{command}` exited non-zero: {}",
+                            first_line(&outcome.output)
+                        ),
                     ),
                     // Fall back to the project-wide test run if the specific
                     // command was not executed.
                     None if !evidence.test_output.is_empty() => {
                         if evidence.test_passed {
-                            (CriterionStatus::Passed, "project test suite passed".to_string())
+                            (
+                                CriterionStatus::Passed,
+                                "project test suite passed".to_string(),
+                            )
                         } else {
-                            (CriterionStatus::Failed, "project test suite failed".to_string())
+                            (
+                                CriterionStatus::Failed,
+                                "project test suite failed".to_string(),
+                            )
                         }
                     }
-                    None => (
-                        CriterionStatus::Manual,
-                        format!("`{command}` was not run"),
-                    ),
+                    None => (CriterionStatus::Manual, format!("`{command}` was not run")),
                 }
             }
             Some(VerificationStep::Lint { tool, must_pass }) => {
@@ -165,9 +174,7 @@ impl VerificationEngine {
                     Some(outcome) if outcome.passed => {
                         (CriterionStatus::Passed, format!("`{tool}` passed"))
                     }
-                    Some(_) if *must_pass => {
-                        (CriterionStatus::Failed, format!("`{tool}` failed"))
-                    }
+                    Some(_) if *must_pass => (CriterionStatus::Failed, format!("`{tool}` failed")),
                     Some(_) => (
                         CriterionStatus::Manual,
                         format!("`{tool}` failed but is not required"),
@@ -179,8 +186,15 @@ impl VerificationEngine {
                 }
             }
             Some(VerificationStep::Diff { pattern }) => {
-                if evidence.changed_files.iter().any(|f| f.contains(pattern.as_str())) {
-                    (CriterionStatus::Passed, format!("changed file matches `{pattern}`"))
+                if evidence
+                    .changed_files
+                    .iter()
+                    .any(|f| f.contains(pattern.as_str()))
+                {
+                    (
+                        CriterionStatus::Passed,
+                        format!("changed file matches `{pattern}`"),
+                    )
                 } else {
                     (
                         CriterionStatus::Failed,

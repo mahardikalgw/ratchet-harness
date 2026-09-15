@@ -1,4 +1,4 @@
-use dialoguer::{theme::ColorfulTheme, Select};
+use dialoguer::{Select, theme::ColorfulTheme};
 use ratchet_sandbox::{ApprovalDecision, ApprovalHandler};
 use std::io::IsTerminal;
 

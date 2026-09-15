@@ -12,7 +12,9 @@ pub struct HttpRequest {
 
 impl HttpRequest {
     pub fn header(&self, name: &str) -> Option<&str> {
-        self.headers.get(&name.to_ascii_lowercase()).map(|s| s.as_str())
+        self.headers
+            .get(&name.to_ascii_lowercase())
+            .map(|s| s.as_str())
     }
 
     pub fn body_json(&self) -> Result<serde_json::Value, serde_json::Error> {

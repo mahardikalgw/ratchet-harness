@@ -48,7 +48,11 @@ fn declared_test_command_passing_marks_criterion_passed() {
 
     let report = engine
         .verify_spec_conformance(
-            &schema(vec![test_criterion("AC-1", "cargo test auth", "test result: ok")]),
+            &schema(vec![test_criterion(
+                "AC-1",
+                "cargo test auth",
+                "test result: ok",
+            )]),
             &evidence,
         )
         .unwrap();
@@ -73,7 +77,11 @@ fn declared_test_command_failing_marks_criterion_failed() {
 
     let report = engine
         .verify_spec_conformance(
-            &schema(vec![test_criterion("AC-1", "cargo test auth", "test result: ok")]),
+            &schema(vec![test_criterion(
+                "AC-1",
+                "cargo test auth",
+                "test result: ok",
+            )]),
             &evidence,
         )
         .unwrap();
@@ -105,7 +113,11 @@ fn doctest_section_does_not_mask_real_tests() {
 
     let report = engine
         .verify_spec_conformance(
-            &schema(vec![test_criterion("AC-1", "cargo test", "test result: ok")]),
+            &schema(vec![test_criterion(
+                "AC-1",
+                "cargo test",
+                "test result: ok",
+            )]),
             &evidence,
         )
         .unwrap();
@@ -120,7 +132,10 @@ fn a_command_that_ran_no_tests_is_manual_not_verified() {
     // `cargo test` on a crate with no tests exits 0 and prints this.
     command_results.insert(
         "cargo test".to_string(),
-        outcome(true, "running 0 tests\n\ntest result: ok. 0 passed; 0 failed"),
+        outcome(
+            true,
+            "running 0 tests\n\ntest result: ok. 0 passed; 0 failed",
+        ),
     );
 
     let evidence = VerificationEvidence {
@@ -130,7 +145,11 @@ fn a_command_that_ran_no_tests_is_manual_not_verified() {
 
     let report = engine
         .verify_spec_conformance(
-            &schema(vec![test_criterion("AC-1", "cargo test", "test result: ok")]),
+            &schema(vec![test_criterion(
+                "AC-1",
+                "cargo test",
+                "test result: ok",
+            )]),
             &evidence,
         )
         .unwrap();
@@ -202,7 +221,10 @@ fn lint_command_that_never_ran_is_manual_not_passed() {
 fn lint_command_that_failed_marks_criterion_failed() {
     let engine = VerificationEngine::new();
     let mut command_results = HashMap::new();
-    command_results.insert("cargo clippy".to_string(), outcome(false, "error: unused import"));
+    command_results.insert(
+        "cargo clippy".to_string(),
+        outcome(false, "error: unused import"),
+    );
 
     let criterion = AcceptanceCriterion {
         id: "AC-1".to_string(),
@@ -307,13 +329,21 @@ fn falls_back_to_project_test_output_when_command_not_run() {
 
     let report = engine
         .verify_spec_conformance(
-            &schema(vec![test_criterion("AC-1", "cargo test", "test result: ok")]),
+            &schema(vec![test_criterion(
+                "AC-1",
+                "cargo test",
+                "test result: ok",
+            )]),
             &evidence,
         )
         .unwrap();
 
     assert_eq!(report.criterion_results[0].status, CriterionStatus::Passed);
-    assert!(report.criterion_results[0].note.contains("project test suite"));
+    assert!(
+        report.criterion_results[0]
+            .note
+            .contains("project test suite")
+    );
 }
 
 #[test]

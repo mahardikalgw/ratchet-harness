@@ -8,7 +8,7 @@ pub mod types;
 
 pub use error::{ProviderError, ProviderResult};
 pub use models::CostModel;
-pub use recovery::{recover_tool_calls, RecoveredToolCall};
-pub use resilience::{retry_async, FailoverProvider, RetryPolicy};
+pub use recovery::{RecoveredToolCall, recover_tool_calls};
+pub use resilience::{FailoverProvider, RetryPolicy, retry_async};
 pub use traits::{ChatRequest, ChatResponse, ChatStream, ModelProvider, ProviderCapabilities};
 pub use types::{Message, MessageRole, ToolCall, ToolDefinition, ToolResult};

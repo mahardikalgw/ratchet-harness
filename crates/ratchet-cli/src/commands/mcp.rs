@@ -3,7 +3,11 @@ use ratchet_mcp::client::McpClient;
 use std::path::Path;
 
 pub async fn connect(_project_dir: &Path, command: &str, args: Vec<String>) -> Result<()> {
-    println!("🔗 Connecting to MCP server: {} {}", command, args.join(" "));
+    println!(
+        "🔗 Connecting to MCP server: {} {}",
+        command,
+        args.join(" ")
+    );
 
     let mut client = McpClient::connect_stdio(command, &args).await?;
 

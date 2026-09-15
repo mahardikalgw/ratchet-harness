@@ -1,5 +1,5 @@
 use anyhow::Result;
-use ratchet_core::{render_report, AgentHarness};
+use ratchet_core::{AgentHarness, render_report};
 use ratchet_spec::SpecParser;
 use std::path::Path;
 

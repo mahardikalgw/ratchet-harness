@@ -245,9 +245,11 @@ async fn main() -> anyhow::Result<()> {
         Commands::Import { source, format } => {
             import::run(&cli.project_dir, &source, format).await?
         }
-        Commands::Dashboard { port, a2a, read_only } => {
-            dashboard::run(&cli.project_dir, port, a2a, read_only).await?
-        }
+        Commands::Dashboard {
+            port,
+            a2a,
+            read_only,
+        } => dashboard::run(&cli.project_dir, port, a2a, read_only).await?,
         Commands::Serve { port } => serve::run(&cli.project_dir, port).await?,
         Commands::Mcp { command, args } => mcp::connect(&cli.project_dir, &command, args).await?,
         Commands::Report { format, since } => {
@@ -279,10 +281,10 @@ async fn main() -> anyhow::Result<()> {
                 .await?
             }
             ProviderAction::Login { name } => provider_cmd::login(&cli.project_dir, &name).await?,
-            ProviderAction::Logout { name } => provider_cmd::logout(&cli.project_dir, &name).await?,
-            ProviderAction::Test { name } => {
-                provider_test::run(&cli.project_dir, name).await?
+            ProviderAction::Logout { name } => {
+                provider_cmd::logout(&cli.project_dir, &name).await?
             }
+            ProviderAction::Test { name } => provider_test::run(&cli.project_dir, name).await?,
             ProviderAction::List => provider_cmd::list(&cli.project_dir).await?,
             ProviderAction::Remove { name } => {
                 provider_cmd::remove(&cli.project_dir, &name).await?

@@ -77,7 +77,11 @@ impl ReviewDelta {
         } else {
             changed_files
                 .iter()
-                .filter(|f| !modules.iter().any(|m| f.starts_with(m.trim_end_matches('/'))))
+                .filter(|f| {
+                    !modules
+                        .iter()
+                        .any(|m| f.starts_with(m.trim_end_matches('/')))
+                })
                 .cloned()
                 .collect()
         };
@@ -111,7 +115,10 @@ impl ReviewDelta {
     pub fn render(&self) -> String {
         let mut out = format!(
             "# Review: {}\n\n**Tasks:** {}/{} executed\n\n**Cost:** ${:.4} across {} turn(s)\n\n",
-            self.spec_id, self.executed_tasks, self.planned_tasks, self.total_cost_usd,
+            self.spec_id,
+            self.executed_tasks,
+            self.planned_tasks,
+            self.total_cost_usd,
             self.total_turns
         );
 

@@ -1,3 +1,4 @@
+use crate::path::string_arg;
 use crate::{
     error::{ToolError, ToolResult},
     fs::{FilePatch, FileRead, FileWrite},
@@ -7,7 +8,6 @@ use crate::{
     test_runner::TestRunner,
 };
 use ratchet_sandbox::SandboxGuard;
-use crate::path::string_arg;
 use serde_json::Value;
 use std::path::PathBuf;
 
@@ -29,20 +29,18 @@ impl ToolExecutor {
     pub async fn execute(&self, ctx: &ToolContext, name: &str, args: Value) -> ToolResult<Value> {
         match name {
             "file_read" => {
-                let path = string_arg(&args, PATH_KEYS).ok_or_else(|| {
-                    ToolError::InvalidArguments(path_error(&args))
-                })?;
+                let path = string_arg(&args, PATH_KEYS)
+                    .ok_or_else(|| ToolError::InvalidArguments(path_error(&args)))?;
                 let limit = args["limit"].as_u64().map(|v| v as usize);
                 let offset = args["offset"].as_u64().map(|v| v as usize);
                 let tool = FileRead;
                 tool.execute(ctx, path, limit, offset).await
             }
             "file_write" => {
-                let path = string_arg(&args, PATH_KEYS).ok_or_else(|| {
-                    ToolError::InvalidArguments(path_error(&args))
-                })?;
-                let content = string_arg(&args, &["content", "text", "data", "body"])
-                    .ok_or_else(|| {
+                let path = string_arg(&args, PATH_KEYS)
+                    .ok_or_else(|| ToolError::InvalidArguments(path_error(&args)))?;
+                let content =
+                    string_arg(&args, &["content", "text", "data", "body"]).ok_or_else(|| {
                         ToolError::InvalidArguments(
                             "content required (expected a `content` string)".into(),
                         )
@@ -51,15 +49,14 @@ impl ToolExecutor {
                 tool.execute(ctx, path, content).await
             }
             "file_patch" => {
-                let path = string_arg(&args, PATH_KEYS).ok_or_else(|| {
-                    ToolError::InvalidArguments(path_error(&args))
-                })?;
-                let old_text = args["old_text"].as_str().ok_or_else(|| {
-                    ToolError::InvalidArguments("old_text required".into())
-                })?;
-                let new_text = args["new_text"].as_str().ok_or_else(|| {
-                    ToolError::InvalidArguments("new_text required".into())
-                })?;
+                let path = string_arg(&args, PATH_KEYS)
+                    .ok_or_else(|| ToolError::InvalidArguments(path_error(&args)))?;
+                let old_text = args["old_text"]
+                    .as_str()
+                    .ok_or_else(|| ToolError::InvalidArguments("old_text required".into()))?;
+                let new_text = args["new_text"]
+                    .as_str()
+                    .ok_or_else(|| ToolError::InvalidArguments("new_text required".into()))?;
                 let tool = FilePatch;
                 tool.execute(ctx, path, old_text, new_text).await
             }
@@ -70,19 +67,19 @@ impl ToolExecutor {
             }
             "grep" => {
                 let pattern = string_arg(&args, &["pattern", "query", "regex"])
-                    .ok_or_else(|| {
-                        ToolError::InvalidArguments("pattern required".into())
-                    })?;
+                    .ok_or_else(|| ToolError::InvalidArguments("pattern required".into()))?;
                 let path = string_arg(&args, PATH_KEYS);
                 let max = args["max_results"].as_u64().map(|v| v as usize);
                 let tool = crate::search::Grep;
                 tool.execute(ctx, pattern, path, max).await
             }
             "shell_exec" => {
-                let command = args["command"].as_str().ok_or_else(|| {
-                    ToolError::InvalidArguments("command required".into())
-                })?;
-                let timeout = args["timeout_secs"].as_u64().map(std::time::Duration::from_secs);
+                let command = args["command"]
+                    .as_str()
+                    .ok_or_else(|| ToolError::InvalidArguments("command required".into()))?;
+                let timeout = args["timeout_secs"]
+                    .as_u64()
+                    .map(std::time::Duration::from_secs);
                 let tool = ShellExec;
                 tool.execute(ctx, command, timeout).await
             }
@@ -101,12 +98,16 @@ impl ToolExecutor {
                 tool.execute(ctx).await
             }
             "git_commit" => {
-                let message = args["message"].as_str().ok_or_else(|| {
-                    ToolError::InvalidArguments("message required".into())
-                })?;
+                let message = args["message"]
+                    .as_str()
+                    .ok_or_else(|| ToolError::InvalidArguments("message required".into()))?;
                 let files: Vec<String> = args["files"]
                     .as_array()
-                    .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 let tool = GitCommit;
                 tool.execute(ctx, message, &files).await

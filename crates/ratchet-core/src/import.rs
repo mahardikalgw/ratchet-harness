@@ -1,7 +1,7 @@
 use crate::CoreResult;
 use ratchet_spec::{
-    format::{Priority, SpecFile, SpecFrontmatter, SpecSection, SpecStatus},
     SpecParser,
+    format::{Priority, SpecFile, SpecFrontmatter, SpecSection, SpecStatus},
 };
 use std::path::Path;
 
@@ -70,14 +70,12 @@ impl SpecImporter {
             }
 
             match current_section {
-                Some("goals")
-                    if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
-                        goals.push(trimmed[2..].to_string());
-                    }
-                Some("non_goals")
-                    if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
-                        non_goals.push(trimmed[2..].to_string());
-                    }
+                Some("goals") if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
+                    goals.push(trimmed[2..].to_string());
+                }
+                Some("non_goals") if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
+                    non_goals.push(trimmed[2..].to_string());
+                }
                 Some("acceptance") => {
                     if trimmed.starts_with("- [") || trimmed.starts_with("* [") {
                         let desc = if trimmed.contains("] ") {
@@ -90,10 +88,9 @@ impl SpecImporter {
                         acceptance_criteria.push(trimmed[2..].to_string());
                     }
                 }
-                Some("constraints")
-                    if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
-                        constraints.push(trimmed[2..].to_string());
-                    }
+                Some("constraints") if (trimmed.starts_with("- ") || trimmed.starts_with("* ")) => {
+                    constraints.push(trimmed[2..].to_string());
+                }
                 _ => {}
             }
 
@@ -108,7 +105,11 @@ impl SpecImporter {
             sections.push(SpecSection {
                 heading: Some("Goals".to_string()),
                 level: 2,
-                body: goals.iter().map(|g| format!("- {}", g)).collect::<Vec<_>>().join("\n"),
+                body: goals
+                    .iter()
+                    .map(|g| format!("- {}", g))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
                 metadata: Default::default(),
             });
         }
@@ -116,7 +117,11 @@ impl SpecImporter {
             sections.push(SpecSection {
                 heading: Some("Non-Goals".to_string()),
                 level: 2,
-                body: non_goals.iter().map(|g| format!("- {}", g)).collect::<Vec<_>>().join("\n"),
+                body: non_goals
+                    .iter()
+                    .map(|g| format!("- {}", g))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
                 metadata: Default::default(),
             });
         }
@@ -137,7 +142,11 @@ impl SpecImporter {
             sections.push(SpecSection {
                 heading: Some("Constraints".to_string()),
                 level: 2,
-                body: constraints.iter().map(|c| format!("- {}", c)).collect::<Vec<_>>().join("\n"),
+                body: constraints
+                    .iter()
+                    .map(|c| format!("- {}", c))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
                 metadata: Default::default(),
             });
         }

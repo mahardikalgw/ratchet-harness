@@ -25,7 +25,10 @@ fn parses_openai_tool_call_delta() {
     assert_eq!(chunk.tool_call_deltas.len(), 1);
     assert_eq!(chunk.tool_call_deltas[0].index, 0);
     assert_eq!(chunk.tool_call_deltas[0].id.as_deref(), Some("call_1"));
-    assert_eq!(chunk.tool_call_deltas[0].name.as_deref(), Some("get_weather"));
+    assert_eq!(
+        chunk.tool_call_deltas[0].name.as_deref(),
+        Some("get_weather")
+    );
     assert_eq!(chunk.tool_call_deltas[0].arguments_delta, "{\"ci");
 }
 
@@ -55,7 +58,8 @@ fn malformed_openai_chunk_yields_error_not_panic() {
 
 #[test]
 fn parses_anthropic_text_delta() {
-    let data = r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}"#;
+    let data =
+        r#"{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hi"}}"#;
     let chunk = parse_anthropic_sse(data).unwrap().unwrap();
     assert_eq!(chunk.content_delta, "Hi");
 }
@@ -82,7 +86,8 @@ fn parses_anthropic_partial_json_delta() {
 
 #[test]
 fn parses_anthropic_message_start_usage() {
-    let data = r#"{"type":"message_start","message":{"usage":{"input_tokens":12,"output_tokens":1}}}"#;
+    let data =
+        r#"{"type":"message_start","message":{"usage":{"input_tokens":12,"output_tokens":1}}}"#;
     let chunk = parse_anthropic_sse(data).unwrap().unwrap();
     let usage = chunk.usage.expect("usage");
     assert_eq!(usage.input_tokens, 12);

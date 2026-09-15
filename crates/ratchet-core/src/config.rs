@@ -20,7 +20,10 @@ pub struct ProjectConfig {
     /// External plugins (custom tools and verification gates).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub plugins: Vec<ratchet_plugins::PluginManifest>,
-    #[serde(default = "default_ratchet_dir", skip_serializing_if = "is_default_ratchet_dir")]
+    #[serde(
+        default = "default_ratchet_dir",
+        skip_serializing_if = "is_default_ratchet_dir"
+    )]
     pub ratchet_dir: PathBuf,
 }
 
@@ -112,7 +115,9 @@ pub struct RoutingSettings {
 
 impl RoutingSettings {
     pub fn is_default(&self) -> bool {
-        self.default.is_none() && self.planning_tasks.is_none() && self.policy == RoutingPolicy::Fixed
+        self.default.is_none()
+            && self.planning_tasks.is_none()
+            && self.policy == RoutingPolicy::Fixed
     }
 }
 

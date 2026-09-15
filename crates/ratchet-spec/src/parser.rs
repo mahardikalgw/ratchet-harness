@@ -1,6 +1,6 @@
 use crate::{
-    format::{SpecFile, SpecFrontmatter, SpecSection},
     SpecError, SpecResult,
+    format::{SpecFile, SpecFrontmatter, SpecSection},
 };
 use indexmap::IndexMap;
 use pulldown_cmark::{Event, Parser, Tag, TagEnd};
@@ -33,8 +33,7 @@ impl SpecParser {
     }
 
     pub fn parse_file(&self, path: &std::path::Path) -> SpecResult<SpecFile> {
-        let content =
-            std::fs::read_to_string(path).map_err(|e| SpecError::Io(e.to_string()))?;
+        let content = std::fs::read_to_string(path).map_err(|e| SpecError::Io(e.to_string()))?;
         self.parse(&content)
     }
 
@@ -86,18 +85,17 @@ impl SpecParser {
                     }
                     current_body.push_str("- ");
                 }
-                Event::End(TagEnd::Item)
-                    if !current_body.ends_with('\n') => {
-                        current_body.push('\n');
-                    }
+                Event::End(TagEnd::Item) if !current_body.ends_with('\n') => {
+                    current_body.push('\n');
+                }
                 Event::Start(Tag::Paragraph)
-                    if !current_body.is_empty() && !current_body.ends_with('\n') => {
-                        current_body.push('\n');
-                    }
-                Event::End(TagEnd::Paragraph)
-                    if !current_body.ends_with('\n') => {
-                        current_body.push('\n');
-                    }
+                    if !current_body.is_empty() && !current_body.ends_with('\n') =>
+                {
+                    current_body.push('\n');
+                }
+                Event::End(TagEnd::Paragraph) if !current_body.ends_with('\n') => {
+                    current_body.push('\n');
+                }
                 Event::Start(Tag::CodeBlock(_)) => {
                     if !current_body.is_empty() && !current_body.ends_with('\n') {
                         current_body.push('\n');

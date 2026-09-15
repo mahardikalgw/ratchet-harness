@@ -6,15 +6,13 @@ use ratchet_core::{
 };
 use ratchet_memory::ProjectMemory;
 use ratchet_providers::{
+    ModelProvider,
     error::ProviderResult,
     models::CostModel,
-    traits::{
-        ChatRequest, ChatResponse, ChatStream, ProviderCapabilities, TokenUsage,
-    },
+    traits::{ChatRequest, ChatResponse, ChatStream, ProviderCapabilities, TokenUsage},
     types::{MessageRole, ToolCall},
-    ModelProvider,
 };
-use ratchet_spec::{schema::TaskNode, SpecParser, TaskId};
+use ratchet_spec::{SpecParser, TaskId, schema::TaskNode};
 use std::sync::{Arc, Mutex};
 
 /// A provider that returns a scripted sequence of responses and records every
@@ -258,13 +256,7 @@ async fn loop_stops_at_turn_cap_for_a_looping_model() {
     let dir = tempfile::tempdir().unwrap();
     // Always return a tool call — would loop forever without a cap.
     let responses: Vec<ChatResponse> = (0..50)
-        .map(|_| {
-            tool_response(
-                "file_read",
-                serde_json::json!({"path": "x.txt"}),
-                (1, 1),
-            )
-        })
+        .map(|_| tool_response("file_read", serde_json::json!({"path": "x.txt"}), (1, 1)))
         .collect();
 
     let provider = Arc::new(ScriptedProvider::new(responses));
@@ -329,7 +321,6 @@ async fn metrics_are_recorded_per_task() {
     assert_eq!(metrics[0].model, "mock");
 }
 
-
 // ----- Multi-agent delegation -----
 
 #[tokio::test]
@@ -388,7 +379,11 @@ async fn rejection_sends_the_task_back_for_revision() {
         .await
         .unwrap();
 
-    assert_eq!(implementer.request_count(), 2, "implementer should revise once");
+    assert_eq!(
+        implementer.request_count(),
+        2,
+        "implementer should revise once"
+    );
     assert_eq!(reviewer.request_count(), 2);
     assert_eq!(
         result.roles,
@@ -406,7 +401,9 @@ async fn revision_loop_is_bounded_by_max_rounds() {
 
     // Reviewer never approves.
     let reviewer = Arc::new(ScriptedProvider::new(
-        (0..10).map(|_| review_response(false, &["still broken"])).collect(),
+        (0..10)
+            .map(|_| review_response(false, &["still broken"]))
+            .collect(),
     ));
     let implementer = Arc::new(ScriptedProvider::new(
         (0..10).map(|_| text_response("attempt")).collect(),

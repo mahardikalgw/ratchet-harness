@@ -36,7 +36,10 @@ fn parses_frontmatter_fields() {
     assert_eq!(spec.frontmatter.id, "billing-reminders");
     assert_eq!(spec.frontmatter.title, "Billing Reminders");
     assert_eq!(spec.frontmatter.tags, vec!["billing", "notifications"]);
-    assert_eq!(spec.frontmatter.priority, ratchet_spec::format::Priority::High);
+    assert_eq!(
+        spec.frontmatter.priority,
+        ratchet_spec::format::Priority::High
+    );
 }
 
 #[test]
@@ -81,7 +84,9 @@ fn flags_missing_frontmatter_as_error() {
 #[test]
 fn handles_body_without_frontmatter() {
     let parser = SpecParser::new();
-    let spec = parser.parse("# Heading\n\nBody line one.\nBody line two.").unwrap();
+    let spec = parser
+        .parse("# Heading\n\nBody line one.\nBody line two.")
+        .unwrap();
 
     assert!(spec.frontmatter.id.is_empty());
     assert!(!spec.sections.is_empty());

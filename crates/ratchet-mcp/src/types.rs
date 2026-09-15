@@ -154,9 +154,17 @@ pub struct ReadResourceResponse {
 #[serde(tag = "type")]
 pub enum ResourceContent {
     #[serde(rename = "text")]
-    Text { uri: String, mime_type: Option<String>, text: String },
+    Text {
+        uri: String,
+        mime_type: Option<String>,
+        text: String,
+    },
     #[serde(rename = "blob")]
-    Blob { uri: String, mime_type: Option<String>, blob: String },
+    Blob {
+        uri: String,
+        mime_type: Option<String>,
+        blob: String,
+    },
 }
 
 // ----- JSON-RPC envelope -----

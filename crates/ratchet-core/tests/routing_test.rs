@@ -4,10 +4,10 @@ use ratchet_core::{
     routing::{RequiredCapabilities, Router, RoutingRequest, TaskType},
 };
 use ratchet_providers::{
+    ModelProvider,
     error::ProviderResult,
     models::CostModel,
     traits::{ChatRequest, ChatResponse, ChatStream, ProviderCapabilities},
-    ModelProvider,
 };
 use std::collections::HashMap;
 use std::sync::Arc;

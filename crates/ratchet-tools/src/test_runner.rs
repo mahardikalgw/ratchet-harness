@@ -1,4 +1,4 @@
-use crate::{error::ToolResult, ToolContext};
+use crate::{ToolContext, error::ToolResult};
 use serde_json::Value;
 use std::path::Path;
 
@@ -25,13 +25,24 @@ pub struct TestResult {
 impl TestRunner {
     pub fn detect(cwd: &Path) -> ToolResult<Self> {
         if cwd.join("Cargo.toml").exists() {
-            Ok(Self { kind: TestRunnerKind::Cargo })
+            Ok(Self {
+                kind: TestRunnerKind::Cargo,
+            })
         } else if cwd.join("package.json").exists() {
-            Ok(Self { kind: TestRunnerKind::Npm })
-        } else if cwd.join("pytest.ini").exists() || cwd.join("setup.py").exists() || cwd.join("pyproject.toml").exists() {
-            Ok(Self { kind: TestRunnerKind::Pytest })
+            Ok(Self {
+                kind: TestRunnerKind::Npm,
+            })
+        } else if cwd.join("pytest.ini").exists()
+            || cwd.join("setup.py").exists()
+            || cwd.join("pyproject.toml").exists()
+        {
+            Ok(Self {
+                kind: TestRunnerKind::Pytest,
+            })
         } else {
-            Ok(Self { kind: TestRunnerKind::Unknown })
+            Ok(Self {
+                kind: TestRunnerKind::Unknown,
+            })
         }
     }
 
@@ -66,6 +77,8 @@ impl TestRunner {
         };
 
         let shell = crate::shell::ShellExec;
-        shell.execute(ctx, &command, Some(std::time::Duration::from_secs(300))).await
+        shell
+            .execute(ctx, &command, Some(std::time::Duration::from_secs(300)))
+            .await
     }
 }
