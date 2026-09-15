@@ -6,6 +6,9 @@
 /.pi
 /skills-lock.json
 
+# Local planning document (not published)
+/prd.md
+
 # Scratch state
 /.ratchet/
 *.log
