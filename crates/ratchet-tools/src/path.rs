@@ -34,6 +34,16 @@ pub fn resolve_path(cwd: &Path, raw: &str) -> PathBuf {
     cwd.join(relative)
 }
 
+/// Present a path with `/` separators.
+///
+/// Paths shown to a model should not depend on the host platform: models are
+/// trained overwhelmingly on Unix-style paths, and a backslash needs escaping
+/// inside JSON. `resolve_path` accepts either form, so normalising on the way
+/// out round-trips cleanly.
+pub fn to_unix_path(path: &str) -> String {
+    path.replace('\\', "/")
+}
+
 /// Read the first present key from a set of aliases.
 ///
 /// Models vary in what they call a path argument (`path`, `file`,
@@ -105,6 +115,16 @@ mod tests {
         let cwd = project_root();
         let resolved = resolve_path(&cwd, "/etc/passwd");
         assert!(resolved.starts_with(&cwd), "{resolved:?} escaped {cwd:?}");
+    }
+
+    #[test]
+    fn windows_separators_become_forward_slashes() {
+        assert_eq!(
+            to_unix_path(r"src\my_module\lib.rs"),
+            "src/my_module/lib.rs"
+        );
+        // Unix paths are already correct and must not change.
+        assert_eq!(to_unix_path("src/lib.rs"), "src/lib.rs");
     }
 
     #[test]

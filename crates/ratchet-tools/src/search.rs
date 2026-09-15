@@ -68,11 +68,12 @@ impl Grep {
                 continue;
             };
             files_searched += 1;
-            let rel = file
-                .strip_prefix(&ctx.cwd)
-                .unwrap_or(&file)
-                .to_string_lossy()
-                .to_string();
+            let rel = crate::path::to_unix_path(
+                &file
+                    .strip_prefix(&ctx.cwd)
+                    .unwrap_or(&file)
+                    .to_string_lossy(),
+            );
 
             for (i, line) in content.lines().enumerate() {
                 if regex.is_match(line) {
@@ -109,7 +110,7 @@ pub fn repo_map(cwd: &std::path::Path, max_entries: usize) -> String {
         .filter_map(|p| {
             p.strip_prefix(cwd)
                 .ok()
-                .map(|r| r.to_string_lossy().to_string())
+                .map(|r| crate::path::to_unix_path(&r.to_string_lossy()))
         })
         .filter(|p| !p.starts_with(".ratchet"))
         .collect();

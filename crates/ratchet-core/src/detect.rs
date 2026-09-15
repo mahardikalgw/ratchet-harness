@@ -318,10 +318,7 @@ pub fn skill_files(root: &Path) -> Vec<String> {
 }
 
 fn short_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .to_string()
+    ratchet_tools::to_unix_path(&path.strip_prefix(root).unwrap_or(path).to_string_lossy())
 }
 
 #[cfg(test)]
