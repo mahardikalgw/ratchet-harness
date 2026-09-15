@@ -16,6 +16,9 @@ pub struct ToolContext {
     pub cwd: PathBuf,
     pub sandbox: SandboxGuard,
     pub registry: ToolRegistry,
+    /// Project-configured test command. Overrides language detection, which is
+    /// what lets Ratchet drive a language it does not recognise.
+    pub test_command: Option<String>,
 }
 
 /// Executes tool calls from the agent.
@@ -85,7 +88,7 @@ impl ToolExecutor {
             }
             "test_run" => {
                 let filter = args["filter"].as_str();
-                let tool = TestRunner::detect(&ctx.cwd)?;
+                let tool = TestRunner::for_context(ctx);
                 tool.execute(ctx, filter).await
             }
             "git_diff" => {

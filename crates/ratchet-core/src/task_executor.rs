@@ -638,6 +638,7 @@ impl TaskExecutor {
             cwd: std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
             sandbox: self.sandbox.clone(),
             registry: registry.clone(),
+            test_command: self.config.project.test_command.clone(),
         };
 
         let outcome = match self

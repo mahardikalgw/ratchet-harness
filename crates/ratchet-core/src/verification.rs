@@ -2,7 +2,7 @@ use crate::CoreResult;
 use ratchet_spec::AcceptanceCriterion;
 use ratchet_spec::schema::{SpecSchema, VerificationStep};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Generates and evaluates verification reports.
 ///
@@ -39,6 +39,12 @@ pub struct VerificationEvidence {
     /// Results of commands explicitly declared in acceptance criteria,
     /// keyed by the command string.
     pub command_results: HashMap<String, CommandOutcome>,
+    /// Commands the sandbox refused to run, keyed by the command string.
+    ///
+    /// A spec is often authored by the model (see the chat session), so a
+    /// verification command is not automatically trusted. It goes through the
+    /// same shell allow-list as anything the agent runs.
+    pub denied_commands: HashSet<String>,
     /// Verdicts from external gate plugins, keyed by criterion id.
     ///
     /// A plugin verdict takes precedence over the built-in check: a project
@@ -127,6 +133,19 @@ impl VerificationEngine {
                 command,
                 expected: _,
             }) => {
+                // A spec may be model-authored, so its commands are not
+                // implicitly trusted: the sandbox decides whether they run.
+                if evidence.denied_commands.contains(command) {
+                    return CriterionResult {
+                        criterion_id: criterion.id.clone(),
+                        description: criterion.description.clone(),
+                        status: CriterionStatus::Manual,
+                        note: format!(
+                            "`{command}` is not in shell_allowlist, so it was not run — \
+                             add it under [sandbox] if it is safe"
+                        ),
+                    };
+                }
                 match evidence.command_results.get(command) {
                     // The command's exit status is authoritative. `expected` is
                     // advisory only: models routinely emit prose there, and a
@@ -170,6 +189,14 @@ impl VerificationEngine {
                 }
             }
             Some(VerificationStep::Lint { tool, must_pass }) => {
+                if evidence.denied_commands.contains(tool) {
+                    return CriterionResult {
+                        criterion_id: criterion.id.clone(),
+                        description: criterion.description.clone(),
+                        status: CriterionStatus::Manual,
+                        note: format!("`{tool}` is not in shell_allowlist, so it was not run"),
+                    };
+                }
                 match evidence.command_results.get(tool) {
                     Some(outcome) if outcome.passed => {
                         (CriterionStatus::Passed, format!("`{tool}` passed"))

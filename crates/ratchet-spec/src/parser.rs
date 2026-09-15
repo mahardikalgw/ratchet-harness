@@ -49,103 +49,83 @@ impl SpecParser {
         }
     }
 
+    /// Split the document into sections, preserving the raw source text.
+    ///
+    /// Earlier versions rebuilt the body from markdown events, which silently
+    /// mangled anything markdown treats as syntax: `app/__init__.py` became
+    /// `app/init.py` because `__init__` parsed as bold. Slicing the original
+    /// document by heading offsets keeps every character exactly as written.
     fn parse_sections(body: &str) -> SpecResult<Vec<SpecSection>> {
-        let parser = Parser::new(body);
         let mut sections: Vec<SpecSection> = Vec::new();
-        let mut current_heading: Option<String> = None;
-        let mut current_level: u8 = 0;
-        let mut current_body = String::new();
+        let mut current: Option<(u8, String)> = None;
+        // Where the current section's content begins in `body`.
+        let mut content_start = 0usize;
         let mut in_heading = false;
+        let mut heading_text = String::new();
 
-        for event in parser {
+        for (event, range) in Parser::new(body).into_offset_iter() {
             match event {
                 Event::Start(Tag::Heading { level, .. }) => {
-                    // Flush the section that just ended.
-                    let body = current_body.trim().to_string();
-                    if current_heading.is_some() || !body.is_empty() {
-                        sections.push(SpecSection {
-                            heading: current_heading.take(),
-                            level: current_level,
-                            body,
+                    // Everything before this heading belongs to the previous one.
+                    let slice = body[content_start..range.start].trim().to_string();
+                    match current.take() {
+                        Some((level, title)) => sections.push(SpecSection {
+                            heading: Some(title),
+                            level,
+                            body: slice,
                             metadata: IndexMap::new(),
-                        });
+                        }),
+                        None if !slice.is_empty() => sections.push(SpecSection {
+                            heading: None,
+                            level: 0,
+                            body: slice,
+                            metadata: IndexMap::new(),
+                        }),
+                        None => {}
                     }
-                    current_body.clear();
-                    current_level = level as u8;
+
+                    heading_text.clear();
                     in_heading = true;
+                    current = Some((level as u8, String::new()));
                 }
+
+                Event::Text(text) if in_heading => heading_text.push_str(&text),
+
                 Event::End(TagEnd::Heading(_)) => {
                     in_heading = false;
-                }
-                // Reconstruct bullet markers so list items stay line-separated
-                // and remain parseable by the extractor.
-                Event::Start(Tag::Item) => {
-                    if !current_body.is_empty() && !current_body.ends_with('\n') {
-                        current_body.push('\n');
+                    if let Some((level, _)) = current {
+                        current = Some((level, heading_text.clone()));
                     }
-                    current_body.push_str("- ");
+                    // Content starts after the rest of the heading's line.
+                    content_start = body[range.end..]
+                        .find('\n')
+                        .map(|i| range.end + i + 1)
+                        .unwrap_or(body.len());
                 }
-                Event::End(TagEnd::Item) if !current_body.ends_with('\n') => {
-                    current_body.push('\n');
-                }
-                Event::Start(Tag::Paragraph)
-                    if !current_body.is_empty() && !current_body.ends_with('\n') =>
-                {
-                    current_body.push('\n');
-                }
-                Event::End(TagEnd::Paragraph) if !current_body.ends_with('\n') => {
-                    current_body.push('\n');
-                }
-                Event::Start(Tag::CodeBlock(_)) => {
-                    if !current_body.is_empty() && !current_body.ends_with('\n') {
-                        current_body.push('\n');
-                    }
-                    current_body.push_str("```\n");
-                }
-                Event::End(TagEnd::CodeBlock) => {
-                    if !current_body.ends_with('\n') {
-                        current_body.push('\n');
-                    }
-                    current_body.push_str("```\n");
-                }
-                Event::Text(text) => {
-                    if in_heading {
-                        current_heading = Some(text.to_string());
-                    } else {
-                        current_body.push_str(&text);
-                    }
-                }
-                Event::Code(code) => {
-                    current_body.push('`');
-                    current_body.push_str(&code);
-                    current_body.push('`');
-                }
-                Event::SoftBreak | Event::HardBreak => {
-                    current_body.push('\n');
-                }
-                Event::Html(html) => {
-                    current_body.push_str(&html);
-                }
+
                 _ => {}
             }
         }
 
-        // Flush the trailing section.
-        let body = current_body.trim().to_string();
-        if current_heading.is_some() || !body.is_empty() {
-            sections.push(SpecSection {
-                heading: current_heading.take(),
-                level: current_level,
-                body,
+        // Trailing section.
+        let slice = body[content_start..].trim().to_string();
+        match current.take() {
+            Some((level, title)) => sections.push(SpecSection {
+                heading: Some(title),
+                level,
+                body: slice,
                 metadata: IndexMap::new(),
-            });
-        } else if sections.is_empty() {
-            sections.push(SpecSection {
-                heading: None,
-                level: 0,
-                body: body.trim().to_string(),
-                metadata: IndexMap::new(),
-            });
+            }),
+            None => {
+                if !slice.is_empty() || sections.is_empty() {
+                    sections.push(SpecSection {
+                        heading: None,
+                        level: 0,
+                        body: slice,
+                        metadata: IndexMap::new(),
+                    });
+                }
+            }
         }
 
         Ok(sections)

@@ -88,6 +88,13 @@ pub struct ProjectSettings {
     pub name: String,
     #[serde(default)]
     pub description: Option<String>,
+    /// Command that runs this project's tests.
+    ///
+    /// Set by `ratchet init` from language detection. It takes precedence over
+    /// detection at run time, so a project in any language — or with a custom
+    /// harness — can be driven without changing Ratchet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_command: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -143,6 +150,7 @@ impl Default for ProjectConfig {
             project: ProjectSettings {
                 name: "unnamed".to_string(),
                 description: None,
+                test_command: None,
             },
             providers: HashMap::new(),
             routing: RoutingSettings::default(),
@@ -179,6 +187,7 @@ impl ProjectConfig {
             project: ProjectSettings {
                 name: project_name.into(),
                 description: None,
+                test_command: None,
             },
             providers: HashMap::new(),
             routing: RoutingSettings::default(),

@@ -361,3 +361,63 @@ fn failing_project_test_suite_fails_overall_even_without_criteria() {
 
     assert!(!report.overall_passed);
 }
+
+// ---------------------------------------------------------------------------
+// A spec is often authored by the model, so its verification commands are not
+// implicitly trusted: they must be in the shell allow-list.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_denied_command_is_manual_with_an_actionable_note() {
+    let engine = VerificationEngine::new();
+    let mut denied = std::collections::HashSet::new();
+    denied.insert("rm -rf /".to_string());
+
+    let evidence = VerificationEvidence {
+        denied_commands: denied,
+        ..Default::default()
+    };
+
+    let report = engine
+        .verify_spec_conformance(
+            &schema(vec![test_criterion("AC-1", "rm -rf /", "")]),
+            &evidence,
+        )
+        .unwrap();
+
+    assert_eq!(report.criterion_results[0].status, CriterionStatus::Manual);
+    assert!(
+        report.criterion_results[0].note.contains("shell_allowlist"),
+        "note should say how to fix it: {}",
+        report.criterion_results[0].note
+    );
+    // Crucially, it is not reported as verified.
+    assert_eq!(report.auto_passed, 0);
+}
+
+#[test]
+fn a_denied_lint_is_manual_too() {
+    let engine = VerificationEngine::new();
+    let mut denied = std::collections::HashSet::new();
+    denied.insert("some-unknown-linter".to_string());
+
+    let criterion = ratchet_spec::schema::AcceptanceCriterion {
+        id: "AC-1".to_string(),
+        description: "lint".to_string(),
+        verification: Some(ratchet_spec::schema::VerificationStep::Lint {
+            tool: "some-unknown-linter".to_string(),
+            must_pass: true,
+        }),
+        must: true,
+    };
+
+    let evidence = VerificationEvidence {
+        denied_commands: denied,
+        ..Default::default()
+    };
+
+    let report = engine
+        .verify_spec_conformance(&schema(vec![criterion]), &evidence)
+        .unwrap();
+    assert_eq!(report.criterion_results[0].status, CriterionStatus::Manual);
+}

@@ -42,6 +42,9 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
         project: ProjectSettings {
             name: name.to_string(),
             description: None,
+            // Record what we detected so runs do not depend on guessing later,
+            // and so an unrecognised language is still drivable.
+            test_command: detected.test_command.clone(),
         },
         providers: Default::default(),
         routing: RoutingSettings::default(),

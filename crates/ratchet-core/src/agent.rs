@@ -384,7 +384,18 @@ impl AgentHarness {
             }
         }
 
+        let sandbox = SandboxGuard::new(self.config.sandbox.clone());
+
         for command in &commands {
+            // A spec may have been written by the model, so its verification
+            // commands are not implicitly trusted: they go through the same
+            // allow-list as anything the agent runs.
+            if sandbox.check_shell(command).is_err() {
+                tracing::warn!(command = %command, "verification command not allow-listed");
+                evidence.denied_commands.insert(command.clone());
+                continue;
+            }
+
             match run_command(&cwd, command).await {
                 Some(outcome) => {
                     evidence.command_results.insert(command.clone(), outcome);
@@ -399,13 +410,29 @@ impl AgentHarness {
         evidence.plugin_results = self.run_gate_plugins(schema, &evidence, &cwd).await;
 
         // Baseline: run the project test suite even if the spec did not ask.
-        if let Ok(runner) = TestRunner::detect(&cwd) {
-            let ctx = ToolContext {
-                cwd: cwd.clone(),
-                sandbox: SandboxGuard::new(self.config.sandbox.clone()),
-                registry: ToolRegistry::new(),
-            };
-            if let Ok(value) = runner.execute(&ctx, None).await {
+        let test_ctx = ToolContext {
+            cwd: cwd.clone(),
+            sandbox,
+            registry: ToolRegistry::new(),
+            test_command: self.config.project.test_command.clone(),
+        };
+        let runner = TestRunner::for_context(&test_ctx);
+
+        // The configured test command is project configuration, so it is
+        // trusted like any other allow-listed command; anything else still
+        // passes through the shell allow-list.
+        let baseline = runner.resolved_command(None);
+        if let Some(command) = &baseline {
+            if self.config.project.test_command.is_none()
+                && !self
+                    .config
+                    .sandbox
+                    .shell_allowlist
+                    .iter()
+                    .any(|a| command.starts_with(a))
+            {
+                evidence.denied_commands.insert(command.clone());
+            } else if let Ok(value) = runner.execute(&test_ctx, None).await {
                 let stdout = value["stdout"].as_str().unwrap_or("");
                 let stderr = value["stderr"].as_str().unwrap_or("");
                 evidence.test_output = format!("{stdout}\n{stderr}");

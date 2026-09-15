@@ -423,6 +423,38 @@ actually fails.
 
 ---
 
+## Language support
+
+Ratchet is not Rust-specific. The agent edits files and runs commands, so it
+works on any codebase; `init` inspects the repository and derives a config that
+fits it.
+
+Detected out of the box:
+
+| Ecosystem | Manifest | Test command |
+|---|---|---|
+| Rust | `Cargo.toml` | `cargo test` |
+| Node / TypeScript | `package.json` (+ lockfile) | `npm`/`pnpm`/`yarn test` |
+| Python | `pyproject.toml`, `setup.py`, `pytest.ini`, `tox.ini` | `pytest` |
+| Go | `go.mod` | `go test ./...` |
+| Ruby | `Gemfile` | `bundle exec rspec` |
+| Java | `pom.xml`, `build.gradle` | `mvn test`, `./gradlew test` |
+| PHP | `composer.json` | `vendor/bin/phpunit` |
+| Make | `Makefile` | `make test` |
+
+Anything else works too — set the command explicitly:
+
+```toml
+[project]
+name = "my-project"
+test_command = "./scripts/verify.sh"    # any command, any language
+```
+
+`test_command` takes precedence over detection, so an unrecognised language or
+a bespoke harness needs no code change. A verification command written into a
+spec (`[verify: ...]`) still has to pass the `[sandbox] shell_allowlist` — a
+spec is often model-authored, so those commands are not implicitly trusted.
+
 ## Providers
 
 Ratchet is model-agnostic. Any of these can sit behind the same agent loop:

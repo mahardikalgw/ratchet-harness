@@ -91,3 +91,95 @@ fn handles_body_without_frontmatter() {
     assert!(spec.frontmatter.id.is_empty());
     assert!(!spec.sections.is_empty());
 }
+
+// ---------------------------------------------------------------------------
+// The body must be preserved verbatim: markdown syntax characters appear in
+// real file paths, and rewriting the body from parsed events destroys them.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn preserves_dunder_names_in_paths() {
+    // `__init__` parses as markdown emphasis; rebuilding the body turned
+    // `app/__init__.py` into `app/init.py`.
+    let spec = SpecParser::new()
+        .parse(
+            "---\nid: x\n---\n\n# Acceptance Criteria\n\n\
+             - [ ] AC-1: app/__init__.py berubah [verify-diff: app/__init__.py]\n",
+        )
+        .unwrap();
+
+    let body = &spec.acceptance_criteria_section().unwrap().body;
+    assert!(
+        body.contains("app/__init__.py"),
+        "dunder mangled, got: {body:?}"
+    );
+    assert!(!body.contains("app/init.py"));
+}
+
+#[test]
+fn preserves_underscores_and_asterisks_in_text() {
+    let spec = SpecParser::new()
+        .parse(
+            "---\nid: x\n---\n\n# Goals\n\n\
+             - handle my_var and *args and **kwargs\n\
+             - keep snake_case_names intact\n",
+        )
+        .unwrap();
+
+    let body = &spec.goals_section().unwrap().body;
+    assert!(body.contains("my_var"), "{body:?}");
+    assert!(body.contains("*args"), "{body:?}");
+    assert!(body.contains("**kwargs"), "{body:?}");
+    assert!(body.contains("snake_case_names"), "{body:?}");
+}
+
+#[test]
+fn preserves_paths_with_underscores() {
+    let spec = SpecParser::new()
+        .parse(
+            "---\nid: x\n---\n\n# Acceptance Criteria\n\n\
+             - [ ] AC-1: src/my_module/sub_dir.py berubah [verify-diff: src/my_module/]\n",
+        )
+        .unwrap();
+
+    let body = &spec.acceptance_criteria_section().unwrap().body;
+    assert!(body.contains("src/my_module/sub_dir.py"), "{body:?}");
+}
+
+#[test]
+fn preserves_inline_code_and_bullets_verbatim() {
+    let spec = SpecParser::new()
+        .parse(
+            "---\nid: x\n---\n\n# Goals\n\n\
+             - run `cargo test --all`\n\
+             - *emphasis* stays\n",
+        )
+        .unwrap();
+
+    let body = &spec.goals_section().unwrap().body;
+    assert!(body.contains("`cargo test --all`"), "{body:?}");
+    assert!(body.contains("*emphasis*"), "{body:?}");
+}
+
+#[test]
+fn preserves_fenced_code_blocks() {
+    let source = "---\nid: x\n---\n\n# Notes\n\n```python\nx = __init__\n```\n";
+    let spec = SpecParser::new().parse(source).unwrap();
+    let body = &spec.section("Notes").unwrap().body;
+    assert!(body.contains("```python"), "{body:?}");
+    assert!(body.contains("__init__"), "{body:?}");
+}
+
+#[test]
+fn preamble_before_the_first_heading_is_kept() {
+    let spec = SpecParser::new()
+        .parse("---\nid: x\n---\n\nLoose preamble text.\n\n# Goals\n\n- one\n")
+        .unwrap();
+
+    let untitled = spec
+        .sections
+        .iter()
+        .find(|s| s.heading.is_none())
+        .expect("preamble section");
+    assert!(untitled.body.contains("Loose preamble text."));
+}
