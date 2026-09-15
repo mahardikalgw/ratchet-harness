@@ -58,6 +58,17 @@ jobs:
 
           echo "version verified: $versions"
 
+      - name: Cargo.lock must match Cargo.toml
+        run: |
+          set -euo pipefail
+          # The release builds use --locked, so an out-of-date lock file would
+          # fail after five cross-compiles instead of here, in seconds.
+          if ! cargo metadata --locked --format-version 1 >/dev/null; then
+            echo "::error::Cargo.lock is out of date — run scripts/release.sh"
+            exit 1
+          fi
+          echo "Cargo.lock is consistent"
+
   build:
     needs: verify
     name: ${{ matrix.target }}

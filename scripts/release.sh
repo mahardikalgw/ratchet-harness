@@ -79,7 +79,7 @@ fi
 echo "releasing $current -> $VERSION  (tag $tag, branch $branch)"
 
 if [ "$DRY_RUN" = "1" ]; then
-    echo "--dry-run: nothing changed"
+    echo "would: bump Cargo.toml, refresh Cargo.lock, verify --locked, commit, tag, push"
     exit 0
 fi
 
@@ -111,8 +111,30 @@ path.write_text(new)
 print(f"Cargo.toml: version -> {version}")
 PY
 
-git add Cargo.toml
+# The version bump changes how every workspace crate is recorded in
+# Cargo.lock, so the lock file has to be refreshed — and then proven
+# consistent, because `cargo build --locked` is what CI actually runs.
+echo "refreshing Cargo.lock…"
+cargo check --workspace --quiet
+
+echo "verifying the lock file matches (as CI builds it)…"
+if ! cargo check --workspace --locked --quiet; then
+    echo "error: Cargo.lock is not consistent with Cargo.toml" >&2
+    exit 1
+fi
+
+git add Cargo.toml Cargo.lock
 git commit -q -m "Release $tag"
+
+# Nothing may be left modified: an uncommitted file means the tag would not
+# describe a state anyone can reproduce. This is the check that would have
+# caught Cargo.lock being left behind.
+if [ -n "$(git status --porcelain)" ]; then
+    echo "error: files changed during the release and were not committed:" >&2
+    git status --short >&2
+    exit 1
+fi
+
 git tag -a "$tag" -m "$tag"
 
 echo "pushing…"
