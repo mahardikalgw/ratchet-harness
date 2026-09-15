@@ -1,6 +1,25 @@
 use crate::{ToolContext, error::ToolResult};
 use serde_json::Value;
 
+/// Build a command that runs `command` through the platform's shell.
+///
+/// POSIX `sh -c` does not exist on Windows, so shell execution would fail
+/// there; `cmd /C` is the equivalent.
+pub fn shell_command(command: &str) -> tokio::process::Command {
+    #[cfg(windows)]
+    {
+        let mut cmd = tokio::process::Command::new("cmd");
+        cmd.arg("/C").arg(command);
+        cmd
+    }
+    #[cfg(not(windows))]
+    {
+        let mut cmd = tokio::process::Command::new("sh");
+        cmd.arg("-c").arg(command);
+        cmd
+    }
+}
+
 pub struct ShellExec;
 
 impl ShellExec {
@@ -16,14 +35,11 @@ impl ShellExec {
 
         let timeout = timeout.unwrap_or(std::time::Duration::from_secs(60));
 
-        let output = tokio::time::timeout(
-            timeout,
-            tokio::process::Command::new("sh")
-                .arg("-c")
-                .arg(command)
-                .current_dir(&ctx.cwd)
-                .output(),
-        )
+        let output = tokio::time::timeout(timeout, {
+            let mut cmd = shell_command(command);
+            cmd.current_dir(&ctx.cwd);
+            cmd.output()
+        })
         .await
         .map_err(|_| crate::error::ToolError::Execution("shell command timed out".into()))??;
 

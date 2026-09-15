@@ -706,13 +706,9 @@ async fn changed_files(cwd: &std::path::Path) -> Vec<String> {
 
 /// Run a shell command declared by a spec, capturing combined output.
 async fn run_command(cwd: &std::path::Path, command: &str) -> Option<CommandOutcome> {
-    let output = tokio::process::Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .current_dir(cwd)
-        .output()
-        .await
-        .ok()?;
+    let mut cmd = ratchet_tools::shell_command(command);
+    cmd.current_dir(cwd);
+    let output = cmd.output().await.ok()?;
 
     let mut combined = String::from_utf8_lossy(&output.stdout).to_string();
     combined.push_str(&String::from_utf8_lossy(&output.stderr));

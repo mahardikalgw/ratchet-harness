@@ -15,5 +15,5 @@ pub use git::{GitCommit, GitDiff, GitStatus};
 pub use path::{resolve_path, string_arg};
 pub use registry::{ToolDefinition, ToolRegistry};
 pub use search::{Grep, ListDir, repo_map};
-pub use shell::ShellExec;
+pub use shell::{ShellExec, shell_command};
 pub use test_runner::{TestResult, TestRunner, TestRunnerKind};

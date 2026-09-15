@@ -46,7 +46,14 @@ dialoguer = "0.11"
 indicatif = "0.17"
 
 # HTTP / API clients
-reqwest = { version = "0.12", features = ["json", "stream", "rustls-tls"] }
+# Default features are off on purpose: the default `native-tls` backend links
+# OpenSSL on Linux, which cannot be built into a static musl binary. rustls is
+# pure Rust and bundles its own trust roots, so the binary stays self-contained.
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "stream",
+    "rustls-tls",
+] }
 eventsource-stream = "0.2"
 futures = "0.3"
 

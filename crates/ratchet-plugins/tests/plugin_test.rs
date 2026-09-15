@@ -3,18 +3,45 @@ use ratchet_plugins::{
 };
 use std::path::Path;
 
-/// Write an executable plugin script into `dir` and return a manifest for it.
-fn install(dir: &Path, name: &str, kind: PluginKind, body: &str) -> PluginManifest {
+/// Locate a Python interpreter.
+///
+/// Plugins are language-agnostic, but these tests need *some* interpreter, and
+/// the executable name differs per platform (`python3` is not guaranteed on
+/// Windows). Tests skip rather than fail when none is installed.
+fn python() -> Option<&'static str> {
+    ["python3", "python", "py"].into_iter().find(|candidate| {
+        std::process::Command::new(candidate)
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    })
+}
+
+/// Write a plugin script into `dir` and return a manifest for it.
+/// Returns `None` when no interpreter is available to run it.
+fn install(dir: &Path, name: &str, kind: PluginKind, body: &str) -> Option<PluginManifest> {
+    let interpreter = python()?;
     let path = dir.join(format!("{name}.py"));
     std::fs::write(&path, body).unwrap();
-    PluginManifest {
+    Some(PluginManifest {
         name: name.to_string(),
         kind,
-        command: "python3".to_string(),
+        command: interpreter.to_string(),
         args: vec![path.display().to_string()],
         criteria: Vec::new(),
         timeout_secs: 20,
-    }
+    })
+}
+
+/// Skip a test cleanly when the interpreter is missing.
+macro_rules! require_python {
+    () => {
+        if python().is_none() {
+            eprintln!("skipping: no python interpreter available");
+            return;
+        }
+    };
 }
 
 const GATE_OK: &str = r#"
@@ -76,7 +103,8 @@ fn request() -> GateRequest {
 #[tokio::test]
 async fn gate_plugin_returns_per_criterion_verdicts() {
     let dir = tempfile::tempdir().unwrap();
-    let manifest = install(dir.path(), "mygate", PluginKind::Gate, GATE_OK);
+    require_python!();
+    let manifest = install(dir.path(), "mygate", PluginKind::Gate, GATE_OK).unwrap();
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
     let results = host.run_gates(&request()).await;
@@ -95,7 +123,8 @@ async fn gate_plugin_returns_per_criterion_verdicts() {
 #[tokio::test]
 async fn gate_plugin_only_sees_its_configured_criteria() {
     let dir = tempfile::tempdir().unwrap();
-    let mut manifest = install(dir.path(), "scoped", PluginKind::Gate, GATE_OK);
+    require_python!();
+    let mut manifest = install(dir.path(), "scoped", PluginKind::Gate, GATE_OK).unwrap();
     manifest.criteria = vec!["AC-1".to_string()];
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
@@ -107,7 +136,8 @@ async fn gate_plugin_only_sees_its_configured_criteria() {
 #[tokio::test]
 async fn crashing_gate_degrades_to_manual_not_silent_pass() {
     let dir = tempfile::tempdir().unwrap();
-    let manifest = install(dir.path(), "broken", PluginKind::Gate, GATE_CRASH);
+    require_python!();
+    let manifest = install(dir.path(), "broken", PluginKind::Gate, GATE_CRASH).unwrap();
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
     let results = host.run_gates(&request()).await;
@@ -122,7 +152,8 @@ async fn crashing_gate_degrades_to_manual_not_silent_pass() {
 #[tokio::test]
 async fn malformed_gate_output_degrades_to_manual() {
     let dir = tempfile::tempdir().unwrap();
-    let manifest = install(dir.path(), "garbage", PluginKind::Gate, GATE_BAD_JSON);
+    require_python!();
+    let manifest = install(dir.path(), "garbage", PluginKind::Gate, GATE_BAD_JSON).unwrap();
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
     let results = host.run_gates(&request()).await;
@@ -135,7 +166,8 @@ async fn malformed_gate_output_degrades_to_manual() {
 #[tokio::test]
 async fn tool_plugin_describes_and_executes() {
     let dir = tempfile::tempdir().unwrap();
-    let manifest = install(dir.path(), "tools", PluginKind::Tool, TOOL_PLUGIN);
+    require_python!();
+    let manifest = install(dir.path(), "tools", PluginKind::Tool, TOOL_PLUGIN).unwrap();
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
     let descriptors = host.describe("tools").await.unwrap();
@@ -163,12 +195,14 @@ async fn unknown_plugin_is_reported() {
 #[tokio::test]
 async fn timeout_is_bounded() {
     let dir = tempfile::tempdir().unwrap();
+    require_python!();
     let mut manifest = install(
         dir.path(),
         "slow",
         PluginKind::Gate,
         "import time\ntime.sleep(30)\n",
-    );
+    )
+    .unwrap();
     manifest.timeout_secs = 1;
     let host = PluginHost::from_manifests(vec![manifest], dir.path());
 
