@@ -27,29 +27,51 @@ reasoning to a strong one, bulk edits to a cheap one.
 
 ```
 $ ratchet
-› buatkan aku toko online sederhana
+› build me a simple storefront
 
-🤖 Dua hal yang mengubah desainnya:
-[1/2] Jual produk fisik, digital, atau keduanya?  1
-[2/2] Payment gateway apa yang dipakai?           midtrans
+🤖 Two things change the design:
+[1/2] Physical products, digital, or both?   1
+[2/2] Which payment gateway?                 midtrans
 
-🤖 Ini spec yang saya usulkan:
-   Toko Online Sederhana  (id: toko-online)
-     AC-1 Fungsi katalog tersedia   (cek: src/lib.rs berubah)
-     AC-2 Test lulus                (cek: cargo test)
-   enter = setuju
+🤖 Here is the spec I propose:
+   Simple Storefront  (id: storefront)
+     AC-1 A catalogue function exists   (check: src/lib.rs changes)
+     AC-2 The test suite passes         (check: cargo test)
+   ✓ all 2 criteria are machine-checkable
+   enter = approve · type changes to revise · /cancel
 ›
 
-   ✓ spec disimpan
-🤖 Rencana: T-1 Implement the catalogue — enter = jalankan
+   ✓ spec saved: ./.ratchet/spec/storefront.spec.md
+🤖 Planning the work…
+   Plan: T-1 Implement the catalogue   — enter = run
 ›
 
-🤖 Selesai. Katalog ditambahkan di src/lib.rs, seluruh kriteria lolos.
+🤖 Done. I added the catalogue to src/lib.rs together with tests, and every
+   automated criterion passes. Nothing changed outside the plan.
    ✅ AC-1   ✅ AC-2
 ```
 
 No markdown to write by hand. The spec and task graph still land in `.ratchet/`
 as durable, reviewable artifacts — you just never author them manually.
+
+### Session commands
+
+| Command | Does |
+|---|---|
+| *(anything)* | start a new request, or revise the current spec |
+| `enter` | approve the current spec or plan |
+| `/spec` | show the proposed spec again |
+| `/model [name]` | show or change the model for this session |
+| `/provider [name]` | show or change the provider |
+| `/providers` | list configured providers |
+| `/status` | current phase and overrides |
+| `/reset` | discard and start over |
+| `/cancel` | abort the spec or plan being reviewed |
+| `/exit` | quit |
+
+`/model` and `/provider` pin an override for the rest of the session without
+touching `ratchet.toml`; `/model default` clears it. A one-off
+`ratchet run --model x` still beats a session pin.
 
 ---
 

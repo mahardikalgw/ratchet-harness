@@ -44,7 +44,7 @@ fn warn(text: &str) {
     println!("   {YELLOW}!{RESET} {text}");
 }
 
-/// Read one line of input. Returns `None` on EOF.
+/// Read one line. Returns `None` on EOF.
 fn read_input(prompt: &str) -> Result<Option<String>> {
     print!("{BOLD}{prompt}{RESET} ");
     std::io::stdout().flush()?;
@@ -97,8 +97,8 @@ impl Session {
         self.spec_id = None;
         self.phase = Phase::Discovery;
 
-        say(&format!("Baik — \"{intent}\"."));
-        info("Saya tanya beberapa hal dulu supaya spec-nya tepat.");
+        say(&format!("\"{intent}\"."));
+        info("A few questions first, so the spec is right.");
         self.advance_discovery().await
     }
 
@@ -119,7 +119,7 @@ impl Session {
                 if !rationale.trim().is_empty() {
                     say(&rationale);
                 } else {
-                    say("Beberapa pertanyaan:");
+                    say("A few questions:");
                 }
                 for (i, question) in questions.iter().enumerate() {
                     let answer = match self.ask(question, i + 1, questions.len())? {
@@ -135,20 +135,20 @@ impl Session {
             }
 
             DiscoveryOutcome::Spec(draft) => {
-                say("Saya sudah cukup. Ini spec yang saya usulkan:");
+                say("That is enough. Here is the spec I propose:");
                 println!();
                 self.show_spec(&draft);
                 self.draft = Some(draft);
                 self.phase = Phase::SpecReview;
                 println!();
-                println!("   {DIM}enter = setuju · ketik perubahan untuk revisi · /batal{RESET}");
+                info("enter = approve · type changes to revise · /cancel");
                 Ok(())
             }
 
             DiscoveryOutcome::Unparseable(raw) => {
-                warn("Model tidak memberi format yang bisa dibaca. Responsnya:");
+                warn("The model did not return a readable response. It said:");
                 println!("   {DIM}{}{RESET}", raw.lines().next().unwrap_or(""));
-                say("Coba jelaskan lagi secara singkat?");
+                say("Could you describe it again, briefly?");
                 self.phase = Phase::Idle;
                 Ok(())
             }
@@ -169,7 +169,7 @@ impl Session {
                     Some(d) => format!(" (enter = {d})"),
                     None => String::new(),
                 };
-                match read_input(&format!("Pilih{hint}:"))? {
+                match read_input(&format!("Choice{hint}:"))? {
                     None => Ok(None),
                     Some(input) => {
                         if input.is_empty() {
@@ -199,7 +199,7 @@ impl Session {
                     }
                 }
             }
-            _ => match read_input("Jawab:")? {
+            _ => match read_input("Answer:")? {
                 None => Ok(None),
                 Some(input) => {
                     if input.is_empty() {
@@ -220,29 +220,29 @@ impl Session {
         );
 
         if !draft.goals.is_empty() {
-            println!("\n   {BOLD}Tujuan{RESET}");
+            println!("\n   {BOLD}Goals{RESET}");
             for goal in &draft.goals {
                 println!("     • {goal}");
             }
         }
         if !draft.non_goals.is_empty() {
-            println!("\n   {BOLD}Bukan termasuk{RESET}");
+            println!("\n   {BOLD}Not included{RESET}");
             for item in &draft.non_goals {
                 println!("     • {item}");
             }
         }
 
-        println!("\n   {BOLD}Kriteria diterima{RESET}");
+        println!("\n   {BOLD}Acceptance criteria{RESET}");
         for criterion in &draft.acceptance_criteria {
             let check = match draft.verification_of(criterion) {
                 Some(ratchet_spec::schema::VerificationStep::Test { command, .. }) => {
-                    format!("{GREEN}cek: {command}{RESET}")
+                    format!("{GREEN}check: {command}{RESET}")
                 }
                 Some(ratchet_spec::schema::VerificationStep::Diff { pattern }) => {
-                    format!("{GREEN}cek: {pattern} berubah{RESET}")
+                    format!("{GREEN}check: {pattern} changes{RESET}")
                 }
                 Some(ratchet_spec::schema::VerificationStep::Lint { tool, .. }) => {
-                    format!("{GREEN}cek: {tool}{RESET}")
+                    format!("{GREEN}check: {tool}{RESET}")
                 }
                 _ => format!("{YELLOW}manual{RESET}"),
             };
@@ -256,16 +256,93 @@ impl Session {
         let total = draft.acceptance_criteria.len();
         println!();
         if auto == total {
-            ok(&format!("{total} kriteria bisa dicek otomatis"));
+            ok(&format!("all {total} criteria are machine-checkable"));
         } else {
             info(&format!(
-                "{auto}/{total} kriteria bisa dicek otomatis, sisanya manual"
+                "{auto}/{total} criteria are machine-checkable; the rest need a human"
             ));
         }
     }
 
     fn set_idle(&mut self) {
         self.phase = Phase::Idle;
+    }
+
+    /// Show or change the provider for this session.
+    fn handle_provider(&mut self, argument: &str) {
+        let argument = argument.trim();
+
+        if argument.is_empty() {
+            let current = self
+                .harness
+                .session_overrides()
+                .provider
+                .clone()
+                .unwrap_or_else(|| "(from ratchet.toml)".to_string());
+            println!("   provider : {current}");
+            let names = self.harness.provider_names();
+            if names.is_empty() {
+                warn("no providers configured");
+            } else {
+                info(&format!("available: {}", names.join(", ")));
+            }
+            return;
+        }
+
+        if argument == "default" || argument == "auto" {
+            self.harness.set_provider(None);
+            ok("provider reset to the configured routing");
+            return;
+        }
+
+        if !self.harness.has_provider(argument) {
+            // Distinguish "typo" from "configured but unusable", because the
+            // fix is different and only one of them is the user's mistake.
+            if self.harness.config().providers.contains_key(argument) {
+                warn(&format!(
+                    "'{argument}' is configured but unavailable — no credential found"
+                ));
+                info(&format!("run: ratchet provider login {argument}"));
+            } else {
+                warn(&format!("no provider named '{argument}'"));
+            }
+            let names = self.harness.provider_names();
+            if !names.is_empty() {
+                info(&format!("usable: {}", names.join(", ")));
+            }
+            return;
+        }
+
+        self.harness.set_provider(Some(argument.to_string()));
+        ok(&format!("provider pinned to '{argument}'"));
+        info("takes effect from the next request");
+    }
+
+    /// Show or change the model name for this session.
+    fn handle_model(&mut self, argument: &str) {
+        let argument = argument.trim();
+
+        if argument.is_empty() {
+            let current = self
+                .harness
+                .session_overrides()
+                .model
+                .clone()
+                .unwrap_or_else(|| "(from ratchet.toml)".to_string());
+            println!("   model    : {current}");
+            info("usage: /model <name>  ·  /model default to reset");
+            return;
+        }
+
+        if argument == "default" || argument == "auto" {
+            self.harness.set_model(None);
+            ok("model reset to the configured default");
+            return;
+        }
+
+        self.harness.set_model(Some(argument.to_string()));
+        ok(&format!("model pinned to '{argument}'"));
+        info("takes effect from the next request");
     }
 }
 
@@ -278,10 +355,9 @@ fn ensure_usable(project_dir: &Path) -> Result<()> {
     let (_, providers) = load_project(project_dir)?;
     if providers.is_empty() {
         anyhow::bail!(
-            "belum ada model yang bisa dipakai.\n\
-             Jalankan dulu:\n  \
-             ratchet provider add <nama> --kind <jenis> --key-env <ENV_VAR>\n\n\
-             Cek dengan: ratchet doctor"
+            "no usable model is configured.\n\
+             Run:\n  ratchet provider add <name> --kind <kind> --key-env <ENV_VAR>\n\n\
+             Then check with: ratchet doctor"
         );
     }
     Ok(())
@@ -292,13 +368,11 @@ pub async fn run(project_dir: &Path, initial: Option<String>) -> Result<()> {
     // and this makes sessions scriptable. Risky shell commands still auto-deny
     // without a TTY, because the approval handler checks for itself.
     if !std::io::stdin().is_terminal() {
-        eprintln!(
-            "{DIM}(stdin bukan terminal — menjawab dari pipe. Gunakan `ratchet run` untuk CI.){RESET}"
-        );
+        eprintln!("{DIM}(stdin is not a terminal — reading answers from the pipe){RESET}");
     }
 
     if !project_dir.join("ratchet.toml").exists() {
-        anyhow::bail!("belum ada ratchet.toml — jalankan `ratchet init <nama>` dulu");
+        anyhow::bail!("no ratchet.toml here — run `ratchet init <name>` first");
     }
 
     ensure_usable(project_dir)?;
@@ -320,17 +394,16 @@ pub async fn run(project_dir: &Path, initial: Option<String>) -> Result<()> {
     };
 
     println!();
-    println!("{BOLD}Ratchet{RESET} {DIM}— ngobrol dulu, baru dikerjakan{RESET}");
     println!(
-        "{DIM}Ketuk apa yang mau kamu buat. /help untuk bantuan, /keluar untuk keluar.{RESET}"
+        "{BOLD}Ratchet{RESET} {DIM}— describe it, answer a few questions, approve, build{RESET}"
     );
+    println!("{DIM}What would you like to build? /help for commands, /exit to quit.{RESET}");
 
     if let Some(intent) = initial {
         session.start(intent).await?;
     }
 
     loop {
-        // --- nothing pending: get the next thing to do -------------------
         let input = match read_input("›")? {
             Some(i) => i,
             None => break, // EOF
@@ -342,33 +415,65 @@ pub async fn run(project_dir: &Path, initial: Option<String>) -> Result<()> {
         }
 
         // --- slash commands ---------------------------------------------
-        if input.starts_with('/') {
-            match input.as_str() {
-                "/keluar" | "/exit" | "/quit" => break,
-                "/help" | "/bantuan" => print_help(),
-                "/spec" => match &session.draft {
+        if let Some(command) = input.strip_prefix('/') {
+            let (name, argument) = match command.split_once(char::is_whitespace) {
+                Some((n, a)) => (n, a),
+                None => (command, ""),
+            };
+
+            match name {
+                "exit" | "quit" | "q" => break,
+                "help" | "h" | "?" => print_help(),
+                "spec" => match &session.draft {
                     Some(draft) => session.show_spec(draft),
-                    None => info("belum ada spec"),
+                    None => info("no spec proposed yet"),
                 },
-                "/status" => {
-                    println!("   fase: {:?}", session.phase);
+                "status" => {
+                    println!("   phase    : {:?}", session.phase);
                     if let Some(id) = &session.spec_id {
-                        println!("   spec: {id}");
+                        println!("   spec     : {id}");
+                    }
+                    let overrides = session.harness.session_overrides();
+                    println!(
+                        "   provider : {}",
+                        overrides
+                            .provider
+                            .as_deref()
+                            .unwrap_or("(from ratchet.toml)")
+                    );
+                    println!(
+                        "   model    : {}",
+                        overrides.model.as_deref().unwrap_or("(from ratchet.toml)")
+                    );
+                    let names = session.harness.provider_names();
+                    if !names.is_empty() {
+                        println!("   usable   : {}", names.join(", "));
                     }
                 }
-                "/reset" => {
-                    say("Oke, mulai dari awal.");
+                "model" => session.handle_model(argument),
+                "provider" => session.handle_provider(argument),
+                "providers" => {
+                    let names = session.harness.provider_names();
+                    if names.is_empty() {
+                        warn("no providers configured");
+                    } else {
+                        for name in names {
+                            println!("   • {name}");
+                        }
+                        info("switch with /provider <name>");
+                    }
+                }
+                "reset" | "cancel" => {
+                    say("Starting over.");
                     session.set_idle();
                 }
-                other => warn(&format!("perintah tidak dikenal: {other}")),
+                other => warn(&format!("unknown command: /{other} — try /help")),
             }
             continue;
         }
 
         match session.phase {
-            Phase::Idle => {
-                session.start(input).await?;
-            }
+            Phase::Idle => session.start(input).await?,
 
             Phase::Discovery => {
                 // Free text while questions are pending is treated as guidance.
@@ -381,10 +486,8 @@ pub async fn run(project_dir: &Path, initial: Option<String>) -> Result<()> {
 
             Phase::SpecReview => {
                 if input.is_empty() {
-                    // Approved: persist the spec and move on to planning. The
-                    // user still reviews the plan before anything runs.
                     run_spec_approved(&mut session).await?;
-                } else if input == "/batal" {
+                } else if input == "/cancel" {
                     session.set_idle();
                 } else {
                     session.transcript.push(Exchange {
@@ -398,24 +501,21 @@ pub async fn run(project_dir: &Path, initial: Option<String>) -> Result<()> {
             Phase::PlanReview => {
                 if input.is_empty() {
                     execute(&mut session).await?;
-                } else if input == "/batal" {
+                } else if input == "/cancel" {
                     session.set_idle();
                 } else {
                     warn(
-                        "belum bisa revisi plan lewat chat — enter untuk jalan, /batal untuk batal",
+                        "the plan cannot be revised mid-session yet — enter to run, /cancel to abort",
                     );
                 }
             }
 
-            Phase::Done => {
-                // Anything typed after a run starts a new request.
-                session.start(input).await?;
-            }
+            Phase::Done => session.start(input).await?,
         }
     }
 
     println!();
-    println!("{DIM}sampai jumpa.{RESET}");
+    println!("{DIM}bye.{RESET}");
     Ok(())
 }
 
@@ -432,17 +532,16 @@ async fn run_spec_approved(session: &mut Session) -> Result<()> {
     let path = spec_dir.join(format!("{}.spec.md", draft.id));
     tokio::fs::write(&path, &raw).await?;
 
-    ok(&format!("spec disimpan: {}", path.display()));
+    ok(&format!("spec saved: {}", path.display()));
     session.spec_id = Some(draft.id.clone());
 
-    // Plan from the spec we just wrote.
     let spec = SpecParser::new().parse(&raw)?;
-    say("Sekarang saya susun rencana kerjanya…");
+    say("Planning the work…");
 
     match session.harness.load_or_plan(&spec).await {
         Ok(plan) => {
             println!();
-            println!("   {BOLD}Rencana{RESET}");
+            println!("   {BOLD}Plan{RESET}");
             for node in &plan.task_graph.nodes {
                 let deps: Vec<String> = plan
                     .task_graph
@@ -453,24 +552,24 @@ async fn run_spec_approved(session: &mut Session) -> Result<()> {
                 let suffix = if deps.is_empty() {
                     String::new()
                 } else {
-                    format!("  {DIM}(setelah {}){RESET}", deps.join(", "))
+                    format!("  {DIM}(after {}){RESET}", deps.join(", "))
                 };
                 println!("     {} {}{}", node.id, node.title, suffix);
             }
 
             if !plan.affected_modules.is_empty() {
                 println!(
-                    "\n   {DIM}modul: {}{RESET}",
+                    "\n   {DIM}modules: {}{RESET}",
                     plan.affected_modules.join(", ")
                 );
             }
 
             session.phase = Phase::PlanReview;
             println!();
-            println!("   {DIM}enter = jalankan · /batal{RESET}");
+            info("enter = run · /cancel");
         }
         Err(e) => {
-            warn(&format!("gagal menyusun rencana: {e}"));
+            warn(&format!("could not produce a plan: {e}"));
             session.set_idle();
         }
     }
@@ -493,73 +592,65 @@ async fn execute(session: &mut Session) -> Result<()> {
     let spec = SpecParser::new().parse(&raw)?;
     let plan = session.harness.load_or_plan(&spec).await?;
 
-    say("Mulai kerja. Saya laporkan kalau sudah selesai.");
+    say("Working on it. I will report when it is done.");
     println!();
 
-    let report = session
+    let report = match session
         .harness
         .run_with(&plan, &spec, RunOverrides::default())
-        .await;
-
-    let report = match report {
+        .await
+    {
         Ok(report) => report,
         Err(e) => {
-            warn(&format!("gagal saat mengerjakan: {e}"));
+            warn(&format!("failed while working: {e}"));
             session.set_idle();
             return Ok(());
         }
     };
 
-    // --- mechanical summary ------------------------------------------------
+    // --- mechanical facts, for the model to summarise ---------------------
     let mut facts = String::new();
     for result in &report.results {
         facts.push_str(&format!(
-            "- task {}: {}, {} turn(s), provider {}, biaya ${:.4}\n",
-            result.task_id,
-            result.status_str(),
-            result.turns,
-            result.provider,
-            result.cost_usd
+            "- task {}: {:?}, {} turn(s), provider {}, cost ${:.4}\n",
+            result.task_id, result.status, result.turns, result.provider, result.cost_usd
         ));
     }
     facts.push_str(&format!(
-        "\nUji otomatis: {}\n",
+        "\nAutomated checks: {}\n",
         report.verification.summary
     ));
     for criterion in &report.verification.criterion_results {
         facts.push_str(&format!(
-            "- {} [{}] {} ({})\n",
-            criterion.criterion_id,
-            format!("{:?}", criterion.status).to_lowercase(),
-            criterion.description,
-            criterion.note
+            "- {} [{:?}] {} ({})\n",
+            criterion.criterion_id, criterion.status, criterion.description, criterion.note
         ));
     }
     facts.push_str(&format!(
-        "\nFile berubah: {}\n",
+        "\nFiles changed: {}\n",
         if report.review.changed_files.is_empty() {
-            "(tidak ada)".to_string()
+            "(none)".to_string()
         } else {
             report.review.changed_files.join(", ")
         }
     ));
     if !report.review.unplanned_changes.is_empty() {
         facts.push_str(&format!(
-            "Di luar rencana: {}\n",
+            "Changed outside the plan: {}\n",
             report.review.unplanned_changes.join(", ")
         ));
     }
 
-    // --- conversational summary -------------------------------------------
+    // --- conversational summary ------------------------------------------
     match session.harness.narrate_run(&session.intent, &facts).await {
         Ok(narration) => say(&narration),
         Err(_) => {
-            say("Selesai. Ringkasannya:");
+            say("Done. Summary:");
             print!("{facts}");
         }
     }
 
-    // --- the honest check --------------------------------------------------
+    // --- the honest verdict ----------------------------------------------
     println!();
     for criterion in &report.verification.criterion_results {
         println!(
@@ -572,41 +663,38 @@ async fn execute(session: &mut Session) -> Result<()> {
 
     println!();
     if report.verification.overall_passed && report.review.is_clean() {
-        ok("Semua kriteria otomatis lolos, tidak ada anomali.");
+        ok("All automated checks passed, no anomalies.");
     } else if report.verification.overall_passed {
-        warn("Kriteria otomatis lolos, tapi ada yang di luar rencana — cek `ratchet review`.");
+        warn(
+            "Automated checks passed, but something changed outside the plan — see `ratchet review`.",
+        );
     } else {
-        warn("Ada kriteria yang gagal. Cek `ratchet verify` untuk detailnya.");
+        warn("Some criteria failed. Run `ratchet verify` for the details.");
     }
 
     session.phase = Phase::Done;
-    println!("{DIM}Ketik permintaan baru, atau /keluar.{RESET}");
+    println!("{DIM}Type a new request, or /exit.{RESET}");
     Ok(())
 }
 
 fn print_help() {
     println!();
-    println!("  {BOLD}Cara pakai{RESET}");
-    println!("    Ketik apa yang mau kamu buat, contoh:");
-    println!("      {DIM}buatkan aku ecommerce sederhana{RESET}");
-    println!("    Saya akan tanya beberapa hal, lalu mengusulkan spec.");
-    println!("    Setelah kamu setuju, saya susun rencana dan kerjakan.");
+    println!("  {BOLD}How to use{RESET}");
+    println!("    Describe what you want to build, for example:");
+    println!("      {DIM}build me a simple storefront{RESET}");
+    println!("    I will ask a few questions, propose a spec, then plan and build it.");
     println!();
-    println!("  {BOLD}Perintah{RESET}");
-    println!("    /spec     lihat spec yang diusulkan");
-    println!("    /status   fase saat ini");
-    println!("    /reset    batalkan dan mulai dari awal");
-    println!("    /help     bantuan ini");
-    println!("    /keluar   keluar");
-}
-
-/// Let the caller render a task status without importing the enum.
-trait StatusStr {
-    fn status_str(&self) -> String;
-}
-
-impl StatusStr for ratchet_core::ExecutionResult {
-    fn status_str(&self) -> String {
-        format!("{:?}", self.status)
-    }
+    println!("  {BOLD}Commands{RESET}");
+    println!("    /spec              show the proposed spec");
+    println!("    /model [name]      show or change the model for this session");
+    println!("    /provider [name]   show or change the provider");
+    println!("    /providers         list configured providers");
+    println!("    /status            current phase, provider and model");
+    println!("    /reset             discard and start over");
+    println!("    /help              this help");
+    println!("    /exit              quit");
+    println!();
+    println!("  {BOLD}At a prompt{RESET}");
+    println!("    enter              approve the spec or plan");
+    println!("    /cancel            abort the current spec or plan");
 }

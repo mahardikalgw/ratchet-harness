@@ -114,7 +114,7 @@ impl DetectedProject {
 
     pub fn summary(&self) -> String {
         if self.ecosystems.is_empty() {
-            return "tidak terdeteksi (pakai default umum)".to_string();
+            return "not detected (using generic defaults)".to_string();
         }
         self.ecosystems
             .iter()
@@ -396,7 +396,7 @@ mod tests {
         // git commands are always allowed, and the list is never empty.
         assert!(found.shell_allowlist.iter().any(|c| c == "git diff"));
         assert!(!found.shell_allowlist.is_empty());
-        assert!(found.summary().contains("tidak terdeteksi"));
+        assert!(found.summary().contains("not detected"));
     }
 
     #[test]

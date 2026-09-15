@@ -53,6 +53,10 @@ pub struct AgentHarness {
     retry: RetryPolicy,
     metrics: MetricsStore,
     plugins: PluginHost,
+    /// Sticky overrides for this session, set by `/model` and `/provider`.
+    /// Without these, changing model mid-session would mean editing the config
+    /// and starting over.
+    session_overrides: RunOverrides,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -113,7 +117,34 @@ impl AgentHarness {
             retry: RetryPolicy::default(),
             metrics,
             plugins,
+            session_overrides: RunOverrides::default(),
         })
+    }
+
+    // ----- session overrides -----
+
+    pub fn session_overrides(&self) -> &RunOverrides {
+        &self.session_overrides
+    }
+
+    /// Pin the provider used for the rest of this session. Pass `None` to
+    /// fall back to the configured routing.
+    pub fn set_provider(&mut self, provider: Option<String>) {
+        self.session_overrides.provider = provider;
+    }
+
+    /// Pin the model name used for the rest of this session.
+    pub fn set_model(&mut self, model: Option<String>) {
+        self.session_overrides.model = model;
+    }
+
+    /// Every configured provider name.
+    pub fn provider_names(&self) -> Vec<String> {
+        self.router.provider_names()
+    }
+
+    pub fn has_provider(&self, name: &str) -> bool {
+        self.router.has_provider(name)
     }
 
     pub fn plugins(&self) -> &PluginHost {
@@ -177,7 +208,11 @@ impl AgentHarness {
             .transition(AgentState::Planning)
             .map_err(CoreError::Execution)?;
 
-        let planning_preferred = provider_for_role(&self.config.delegation, AgentRole::Planner)
+        let planning_preferred = self
+            .session_overrides
+            .provider
+            .clone()
+            .or_else(|| provider_for_role(&self.config.delegation, AgentRole::Planner))
             .or_else(|| self.config.routing.planning_tasks.clone());
 
         let routing_req = RoutingRequest {
@@ -243,8 +278,10 @@ impl AgentHarness {
             .transition(AgentState::Executing)
             .map_err(CoreError::Execution)?;
 
+        let merged = overrides.merged_over(&self.session_overrides);
+
         let mut executor = TaskExecutor::new(self.config.clone(), self.router.clone())
-            .with_overrides(overrides)
+            .with_overrides(merged)
             .with_approval(Arc::clone(&self.approval))
             .with_retry(self.retry.clone())
             .with_plugins(self.plugins.clone());
@@ -291,7 +328,11 @@ impl AgentHarness {
         prompt: String,
         max_tokens: u64,
     ) -> CoreResult<String> {
-        let preferred = provider_for_role(&self.config.delegation, role)
+        let preferred = self
+            .session_overrides
+            .provider
+            .clone()
+            .or_else(|| provider_for_role(&self.config.delegation, role))
             .or_else(|| self.config.routing.planning_tasks.clone())
             .or_else(|| self.config.routing.default.clone());
 
@@ -314,7 +355,7 @@ impl AgentHarness {
                 tools: vec![],
                 temperature: Some(0.2),
                 max_tokens: Some(max_tokens),
-                model: None,
+                model: self.session_overrides.model.clone(),
             })
             .await
             .map_err(|e| CoreError::Provider(e.to_string()))?;

@@ -46,7 +46,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 # The "work" the mock model performs
 # ---------------------------------------------------------------------------
 
-CATALOG_RS = '''//! Toko online sederhana.
+CATALOG_RS = '''//! Simple storefront.
 
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
@@ -63,8 +63,8 @@ pub struct Product {
 /// Everything on sale, in display order.
 pub fn catalog() -> Vec<Product> {
     vec![
-        Product { sku: "SKU-1".into(), name: "Kopi Arabika".into(), price: 85000 },
-        Product { sku: "SKU-2".into(), name: "Teh Hijau".into(), price: 45000 },
+        Product { sku: "SKU-1".into(), name: "Arabica Coffee".into(), price: 85000 },
+        Product { sku: "SKU-2".into(), name: "Green Tea".into(), price: 45000 },
     ]
 }
 
@@ -113,18 +113,18 @@ PLAN = {
 
 DISCOVERY_QUESTIONS = {
     "done": False,
-    "rationale": "Dua hal yang mengubah desainnya:",
+    "rationale": "Two things change the design:",
     "questions": [
         {
             "id": "q1",
-            "question": "Jual produk fisik, digital, atau keduanya?",
+            "question": "Physical products, digital, or both?",
             "kind": "choice",
-            "options": ["fisik", "digital", "keduanya"],
-            "default": "fisik",
+            "options": ["physical", "digital", "both"],
+            "default": "physical",
         },
         {
             "id": "q2",
-            "question": "Payment gateway apa yang dipakai?",
+            "question": "Which payment gateway?",
             "kind": "text",
             "default": "midtrans",
         },
@@ -134,15 +134,15 @@ DISCOVERY_QUESTIONS = {
 DISCOVERY_SPEC = {
     "done": True,
     "spec": {
-        "id": "toko-online",
-        "title": "Toko Online Sederhana",
-        "goals": ["Menampilkan katalog produk", "Checkout satu produk"],
-        "non_goals": ["Multi-vendor", "Manajemen gudang"],
+        "id": "storefront",
+        "title": "Simple Storefront",
+        "goals": ["Show a product catalogue", "Check out a single product"],
+        "non_goals": ["Multi-vendor", "Warehouse management"],
         "acceptance_criteria": [
-            {"id": "AC-1", "description": "Fungsi katalog tersedia", "verify_diff": "src/lib.rs"},
-            {"id": "AC-2", "description": "Test lulus", "verify": "cargo test"},
+            {"id": "AC-1", "description": "A catalogue function exists", "verify_diff": "src/lib.rs"},
+            {"id": "AC-2", "description": "The test suite passes", "verify": "cargo test"},
         ],
-        "constraints": ["Bahasa Indonesia"],
+        "constraints": ["Prices in IDR"],
     },
 }
 
@@ -228,9 +228,9 @@ def decide(body: dict, state: State) -> dict:
         # Post-run narration.
         if "You just finished working on this request" in prompt:
             return text_response(
-                "Selesai. Saya menambahkan fungsi katalog di src/lib.rs beserta "
-                "test-nya, dan seluruh kriteria otomatis sudah lolos. "
-                "Tidak ada yang keluar dari rencana."
+                "Done. I added the catalogue to src/lib.rs together with tests, "
+                "and every automated criterion passes. Nothing changed outside "
+                "the plan."
             )
         if "Generate a technical plan" in prompt:
             return text_response(json.dumps(PLAN))

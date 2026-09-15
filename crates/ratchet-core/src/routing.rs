@@ -46,6 +46,18 @@ impl Router {
         Self { policy, providers }
     }
 
+    /// Names of every configured provider, sorted.
+    pub fn provider_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self.providers.keys().cloned().collect();
+        names.sort();
+        names
+    }
+
+    /// Does a provider with this name exist?
+    pub fn has_provider(&self, name: &str) -> bool {
+        self.providers.contains_key(name)
+    }
+
     /// The single best provider.
     pub fn route(&self, req: &RoutingRequest) -> CoreResult<RoutingResult> {
         self.route_all(req)?

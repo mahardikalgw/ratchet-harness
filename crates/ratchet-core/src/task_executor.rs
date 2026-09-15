@@ -32,13 +32,43 @@ pub const MAX_TURNS: usize = 12;
 /// into the model's context (the "context firewall" from the design).
 pub const MAX_INLINE_TOOL_OUTPUT: usize = 8_000;
 
-/// Per-run overrides that take precedence over routing config.
-#[derive(Debug, Clone, Default)]
+/// Overrides that take precedence over routing config.
+///
+/// They exist at two levels: a session-wide pin (set by `/provider` and
+/// `/model`) and a one-off value for a single run (`ratchet run --model`).
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct RunOverrides {
-    /// Force a specific provider for this run.
+    /// Force a specific provider.
     pub provider: Option<String>,
     /// Force a specific model name (passed through to the provider).
     pub model: Option<String>,
+}
+
+impl RunOverrides {
+    /// Layer a per-run override on top of a session-wide one.
+    ///
+    /// A one-off value beats a session pin, which beats the config — so
+    /// `ratchet run --model x` still works inside a session pinned elsewhere.
+    pub fn merged_over(&self, session: &RunOverrides) -> RunOverrides {
+        RunOverrides {
+            provider: self.provider.clone().or_else(|| session.provider.clone()),
+            model: self.model.clone().or_else(|| session.model.clone()),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.provider.is_none() && self.model.is_none()
+    }
+
+    /// Human-readable description of what is pinned, for status output.
+    pub fn describe(&self) -> String {
+        match (&self.provider, &self.model) {
+            (None, None) => "from ratchet.toml".to_string(),
+            (Some(p), None) => format!("provider {p}"),
+            (None, Some(m)) => format!("model {m}"),
+            (Some(p), Some(m)) => format!("provider {p}, model {m}"),
+        }
+    }
 }
 
 /// What one agent-loop invocation produced.
