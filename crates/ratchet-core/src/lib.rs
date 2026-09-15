@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod config;
 pub mod delegation;
+pub mod detect;
 pub mod discovery;
 pub mod error;
 pub mod import;
@@ -14,6 +15,7 @@ pub mod verification;
 pub use agent::{AgentConfig, AgentHarness, RunReport, render_report};
 pub use config::{DelegationSettings, McpServerConfig, McpSettings, ProjectConfig};
 pub use delegation::{AgentRole, ReviewVerdict, parse_review_verdict, provider_for_role};
+pub use detect::{DetectedProject, Ecosystem, detect};
 pub use discovery::{
     DiscoveryOutcome, Exchange, Question, QuestionKind, SpecDraft, parse_discovery, render_spec,
     to_spec_file,

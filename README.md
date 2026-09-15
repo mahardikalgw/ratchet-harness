@@ -267,6 +267,48 @@ ratchet run billing-reminders --all
 ratchet verify billing-reminders
 ```
 
+### Adding Ratchet to an existing repository
+
+`ratchet init` is designed for this. It looks at the repository first and
+writes a config that fits, so the sandbox permits the commands your project
+actually uses:
+
+```
+$ cd existing-project
+$ ratchet init existing-project
+
+🔍 Memeriksa proyek…
+   bahasa        : Rust + Node/TypeScript
+   folder sumber : src, components
+   diabaikan     : node_modules, target (vendor/generated)
+
+✅ Siap. Dibuat:
+   ./ratchet.toml
+   ./.ratchet/
+```
+
+Recognised ecosystems: Rust, Node/TypeScript, Python, Go, Ruby, Java, PHP,
+Make — and combinations of them. For each it derives the safe command
+allow-list (`cargo test`, `pytest`, `go test ./...`, …) and only includes
+directories that exist.
+
+What it will **not** do:
+
+- touch, move, or reformat any existing file
+- add vendored or generated directories (`node_modules`, `target`, `dist`,
+  `build`, `.venv`, `vendor`, …) to the write allow-list
+- overwrite an existing `ratchet.toml` — it refuses and tells you
+
+Everything it creates is additive and easy to remove:
+
+```
+ratchet.toml     config
+.ratchet/        specs, plans, task graphs, verification reports
+```
+
+If the detected allow-list is wrong for your project, edit `ratchet.toml` —
+it is a plain, commented file. Run `ratchet doctor` afterwards to confirm.
+
 ### First-time setup
 
 ```bash
