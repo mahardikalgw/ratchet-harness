@@ -423,6 +423,44 @@ actually fails.
 
 ---
 
+## Skills and agent instruction directories
+
+Directories that hold agent instructions — `.agents`, `.claude`, `.cursor`,
+`.codex`, `.gemini`, `.continue`, `.aider`, `.pi` — are detected, reported, and
+made **readable but not writable**:
+
+```
+$ ratchet init my-project
+
+🔍 Memeriksa proyek…
+   bahasa        : Rust
+   folder sumber : src
+   skills        : .agents (bisa dibaca, tidak bisa diubah)
+   tidak diizinkan: .github (tambahkan manual kalau perlu)
+
+   2 skill ditemukan:
+     • rust-best-practices
+     • rust-testing
+```
+
+```toml
+[sandbox]
+allowed_paths = ["src", ".ratchet"]   # read + write
+read_only_paths = [".agents"]         # read only
+```
+
+The read/write split matters. Skills are useful project context, but an agent
+that can *write* them can rewrite its own instructions — so `file_write` and
+`file_patch` against a read-only path are refused with an error that says why.
+
+Skill files (`.agents/skills/*/SKILL.md`) are listed by `init` and appear in
+the repository map the agent is shown, so it discovers them without being told
+where they live.
+
+Directories that exist but are neither source nor agent tooling — `.github`,
+`.vscode`, `.idea`, `.devcontainer` — are reported but not added to the write
+scope. Add them by hand if a task genuinely needs to edit, say, CI workflows.
+
 ## Language support
 
 Ratchet is not Rust-specific. The agent edits files and runs commands, so it

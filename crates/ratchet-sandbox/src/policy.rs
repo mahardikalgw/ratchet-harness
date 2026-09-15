@@ -4,8 +4,13 @@ use std::path::PathBuf;
 /// Top-level sandbox configuration.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SandboxPolicy {
+    /// Read and write.
     #[serde(default = "default_allowed_paths")]
     pub allowed_paths: Vec<PathBuf>,
+    /// Read only. Used for agent instruction directories (`.agents`, ...),
+    /// which are useful context but must not be rewritten by the agent itself.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub read_only_paths: Vec<PathBuf>,
     #[serde(default = "default_shell_allowlist")]
     pub shell_allowlist: Vec<String>,
     #[serde(default)]
@@ -18,6 +23,7 @@ impl Default for SandboxPolicy {
     fn default() -> Self {
         Self {
             allowed_paths: default_allowed_paths(),
+            read_only_paths: Vec::new(),
             shell_allowlist: default_shell_allowlist(),
             network_allowed: false,
             approval_policy: ApprovalPolicy::default(),

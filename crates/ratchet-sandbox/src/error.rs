@@ -10,6 +10,12 @@ pub enum SandboxError {
     )]
     PathDenied { path: String, allowed: String },
 
+    #[error(
+        "path '{path}' is readable but not writable (it holds agent instructions, \
+         so Ratchet will not modify it)"
+    )]
+    PathReadOnly { path: String },
+
     #[error("shell command denied: {command}")]
     ShellDenied { command: String },
 

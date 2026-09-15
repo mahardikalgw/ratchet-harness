@@ -97,6 +97,10 @@ pub struct DetectedProject {
     pub source_dirs: Vec<String>,
     /// Directory names that exist but are usually not hand-edited.
     pub skipped_dirs: Vec<String>,
+    /// Readable but never written: agent instructions and skills.
+    pub skill_dirs: Vec<String>,
+    /// Versioned config that exists but is not in the write allow-list.
+    pub other_config_dirs: Vec<String>,
     /// Combined, de-duplicated allow-list.
     pub shell_allowlist: Vec<String>,
     /// Best guess at the project's test command, if any.
@@ -159,6 +163,25 @@ const ALWAYS_SKIPPED: &[&str] = &[
     ".gradle",
 ];
 
+/// Directories holding agent instructions, skills and tooling configuration.
+///
+/// These are read so the agent picks up project conventions, but never
+/// written: allowing writes would let an agent rewrite its own instructions.
+const SKILL_DIRS: &[&str] = &[
+    ".agents",
+    ".claude",
+    ".cursor",
+    ".continue",
+    ".codex",
+    ".gemini",
+    ".aider",
+    ".pi",
+];
+
+/// Versioned project configuration that exists but is not a source directory.
+/// Reported so the user can opt in deliberately.
+const OTHER_CONFIG_DIRS: &[&str] = &[".github", ".vscode", ".idea", ".devcontainer"];
+
 /// Inspect a repository root.
 pub fn detect(root: &Path) -> DetectedProject {
     let has = |name: &str| root.join(name).exists();
@@ -200,6 +223,19 @@ pub fn detect(root: &Path) -> DetectedProject {
         .collect();
 
     let skipped_dirs: Vec<String> = ALWAYS_SKIPPED
+        .iter()
+        .filter(|d| root.join(d).is_dir())
+        .map(|d| d.to_string())
+        .collect();
+
+    // Skills are readable context, not write targets.
+    let skill_dirs: Vec<String> = SKILL_DIRS
+        .iter()
+        .filter(|d| root.join(d).is_dir())
+        .map(|d| d.to_string())
+        .collect();
+
+    let other_config_dirs: Vec<String> = OTHER_CONFIG_DIRS
         .iter()
         .filter(|d| root.join(d).is_dir())
         .map(|d| d.to_string())
@@ -247,9 +283,45 @@ pub fn detect(root: &Path) -> DetectedProject {
         ecosystems,
         source_dirs,
         skipped_dirs,
+        skill_dirs,
+        other_config_dirs,
         shell_allowlist,
         test_command,
     }
+}
+
+/// Skill files worth telling the model about, as `name: relative/path` pairs.
+///
+/// Only `SKILL.md` under `*/skills/*/` is considered, which is the convention
+/// these directories use; anything else is left to the agent to discover.
+pub fn skill_files(root: &Path) -> Vec<String> {
+    let mut found = Vec::new();
+
+    for dir in SKILL_DIRS {
+        let skills_root = root.join(dir).join("skills");
+        let Ok(entries) = std::fs::read_dir(&skills_root) else {
+            continue;
+        };
+
+        for entry in entries.flatten() {
+            let candidate = entry.path().join("SKILL.md");
+            if candidate.is_file() {
+                if let Some(name) = entry.file_name().to_str() {
+                    found.push(format!("{name}: {}", short_path(root, &candidate)));
+                }
+            }
+        }
+    }
+
+    found.sort();
+    found
+}
+
+fn short_path(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .to_string()
 }
 
 #[cfg(test)]
@@ -337,6 +409,64 @@ mod tests {
         assert!(found.skipped_dirs.contains(&"node_modules".to_string()));
         // Vendored code must never enter the write allow-list.
         assert!(!found.source_dirs.contains(&"node_modules".to_string()));
+    }
+
+    #[test]
+    fn detects_agent_skill_directories() {
+        let dir = tmp();
+        std::fs::write(dir.path().join("Cargo.toml"), "").unwrap();
+        std::fs::create_dir_all(dir.path().join(".agents/skills/rust-best-practices")).unwrap();
+        std::fs::write(
+            dir.path()
+                .join(".agents/skills/rust-best-practices/SKILL.md"),
+            "# skill",
+        )
+        .unwrap();
+
+        let found = detect(dir.path());
+        assert!(found.skill_dirs.contains(&".agents".to_string()));
+        // Skills must never enter the write allow-list.
+        assert!(!found.source_dirs.contains(&".agents".to_string()));
+
+        let skills = skill_files(dir.path());
+        assert_eq!(skills.len(), 1);
+        assert!(skills[0].starts_with("rust-best-practices: "));
+        assert!(skills[0].ends_with(".agents/skills/rust-best-practices/SKILL.md"));
+    }
+
+    #[test]
+    fn finds_skills_across_several_tooling_directories() {
+        let dir = tmp();
+        for (tool, skill) in [(".agents", "alpha"), (".claude", "beta")] {
+            let path = dir.path().join(tool).join("skills").join(skill);
+            std::fs::create_dir_all(&path).unwrap();
+            std::fs::write(path.join("SKILL.md"), "# skill").unwrap();
+        }
+
+        let skills = skill_files(dir.path());
+        assert_eq!(skills.len(), 2);
+        assert!(skills[0].starts_with("alpha:"));
+        assert!(skills[1].starts_with("beta:"));
+    }
+
+    #[test]
+    fn no_skill_directory_means_no_skills() {
+        let dir = tmp();
+        assert!(skill_files(dir.path()).is_empty());
+        assert!(detect(dir.path()).skill_dirs.is_empty());
+    }
+
+    #[test]
+    fn reports_versioned_config_directories() {
+        let dir = tmp();
+        std::fs::create_dir_all(dir.path().join(".github/workflows")).unwrap();
+        std::fs::create_dir_all(dir.path().join(".vscode")).unwrap();
+
+        let found = detect(dir.path());
+        assert!(found.other_config_dirs.contains(&".github".to_string()));
+        assert!(found.other_config_dirs.contains(&".vscode".to_string()));
+        // Present, but not silently added to the write scope.
+        assert!(!found.source_dirs.contains(&".github".to_string()));
     }
 
     #[test]

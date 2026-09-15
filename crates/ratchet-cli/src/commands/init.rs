@@ -1,7 +1,7 @@
 use anyhow::Result;
 use ratchet_core::{
     config::{ProjectConfig, ProjectSettings, RoutingSettings},
-    detect::detect,
+    detect::{detect, skill_files},
 };
 use ratchet_sandbox::policy::SandboxPolicy;
 use std::path::{Path, PathBuf};
@@ -18,14 +18,38 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
     // --- look at what is actually here ---------------------------------
     let detected = detect(project_dir);
 
+    let skills = skill_files(project_dir);
+
     println!("🔍 Memeriksa proyek…");
     println!("   bahasa        : {}", detected.summary());
     println!("   folder sumber : {}", detected.source_dirs.join(", "));
+    if !detected.skill_dirs.is_empty() {
+        println!(
+            "   skills        : {} (bisa dibaca, tidak bisa diubah)",
+            detected.skill_dirs.join(", ")
+        );
+    }
     if !detected.skipped_dirs.is_empty() {
         println!(
             "   diabaikan     : {} (vendor/generated)",
             detected.skipped_dirs.join(", ")
         );
+    }
+    if !detected.other_config_dirs.is_empty() {
+        println!(
+            "   tidak diizinkan: {} (tambahkan manual kalau perlu)",
+            detected.other_config_dirs.join(", ")
+        );
+    }
+    if !skills.is_empty() {
+        println!();
+        println!("   {} skill ditemukan:", skills.len());
+        for skill in skills.iter().take(10) {
+            println!("     • {}", skill.split(':').next().unwrap_or(skill));
+        }
+        if skills.len() > 10 {
+            println!("     • … dan {} lagi", skills.len() - 10);
+        }
     }
 
     // --- scaffold the directories --------------------------------------
@@ -37,6 +61,10 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
     // --- write a config that fits this repository ----------------------
     let mut allowed_paths: Vec<PathBuf> = detected.source_dirs.iter().map(PathBuf::from).collect();
     allowed_paths.push(PathBuf::from(".ratchet"));
+
+    // Skills and agent tooling are context, not a write target: the agent must
+    // not be able to rewrite its own instructions.
+    let read_only_paths: Vec<PathBuf> = detected.skill_dirs.iter().map(PathBuf::from).collect();
 
     let config = ProjectConfig {
         project: ProjectSettings {
@@ -50,6 +78,7 @@ pub async fn run(project_dir: &Path, name: &str) -> Result<()> {
         routing: RoutingSettings::default(),
         sandbox: SandboxPolicy {
             allowed_paths,
+            read_only_paths,
             shell_allowlist: detected.shell_allowlist.clone(),
             network_allowed: false,
             approval_policy: Default::default(),
