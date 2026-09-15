@@ -1,0 +1,23 @@
+[package]
+name = "ratchet-spec"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+anyhow.workspace = true
+pulldown-cmark.workspace = true
+regex.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+indexmap.workspace = true
+serde_yaml.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

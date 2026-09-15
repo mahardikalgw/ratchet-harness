@@ -1,0 +1,11 @@
+# Build output
+/target
+
+# Local agent tooling (not part of the project)
+/.agents
+/.pi
+/skills-lock.json
+
+# Scratch state
+/.ratchet/
+*.log
