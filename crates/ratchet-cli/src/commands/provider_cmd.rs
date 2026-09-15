@@ -6,6 +6,7 @@ use std::path::Path;
 
 use crate::secrets::{delete_secret, describe_source, store_secret};
 
+#[allow(clippy::too_many_arguments)]
 pub async fn add(
     project_dir: &Path,
     name: &str,
@@ -14,6 +15,7 @@ pub async fn add(
     base_url: Option<String>,
     model: Option<String>,
     via: Option<String>,
+    default: bool,
 ) -> Result<()> {
     let config_path = project_dir.join("ratchet.toml");
     let mut config = if config_path.exists() {
@@ -42,9 +44,69 @@ pub async fn add(
         },
     );
 
+    // Make the project immediately runnable: routing must point somewhere
+    // valid, otherwise the first `ratchet run` fails for a reason the user
+    // cannot see. Selecting the first provider as the default removes the
+    // need to hand-edit ratchet.toml.
+    // A provider is a useful default only if it exists *and* has a credential.
+    let current_default_usable = match &config.routing.default {
+        Some(current) => match config.providers.get(current) {
+            Some(settings) => {
+                settings.api_key_env.is_none()
+                    || crate::secrets::resolve_secret(current, settings.api_key_env.as_deref())
+                        .is_some()
+            }
+            None => false,
+        },
+        None => false,
+    };
+    let this_provider_usable = config
+        .providers
+        .get(name)
+        .map(|s| {
+            s.api_key_env.is_none()
+                || crate::secrets::resolve_secret(name, s.api_key_env.as_deref()).is_some()
+        })
+        .unwrap_or(false);
+
+    let selected_default = default || !current_default_usable;
+    let stale_default = !current_default_usable;
+
+    if !stale_default && !default && !this_provider_usable {
+        println!(
+            "   note: '{name}' has no credential, so routing still points at \
+             '{}'",
+            config.routing.default.as_deref().unwrap_or("-")
+        );
+    }
+
+    if selected_default {
+        config.routing.default = Some(name.to_string());
+    }
+    if config.routing.planning_tasks.is_none() || stale_default {
+        config.routing.planning_tasks = Some(name.to_string());
+    }
+
     config.save(&config_path)?;
-    println!("✅ Added provider '{name}' to {:?}", config_path);
-    println!("   Store its credential with: ratchet provider login {name}");
+
+    println!("✅ Added provider '{name}' ({kind})");
+    if selected_default {
+        println!("   routing.default = {name}");
+    }
+    println!();
+    println!("Next:");
+    // `key_env` was moved into the settings, so re-read it from there.
+    let has_env = config
+        .providers
+        .get(name)
+        .and_then(|p| p.api_key_env.as_deref())
+        .is_some();
+    if has_env {
+        println!("  ratchet provider test {name}     # verify the credential works");
+    } else {
+        println!("  ratchet provider login {name}    # store the credential");
+        println!("  ratchet provider test {name}     # verify it works");
+    }
 
     Ok(())
 }
@@ -131,13 +193,15 @@ pub async fn remove(project_dir: &Path, name: &str) -> Result<()> {
     if config.providers.remove(name).is_some() {
         // Drop routing references to the provider we just removed, otherwise
         // the config silently points at something that no longer exists.
+        // Promote a surviving provider instead of leaving a hole.
+        let fallback = config.providers.keys().next().cloned();
         let mut cleared = Vec::new();
         if config.routing.default.as_deref() == Some(name) {
-            config.routing.default = None;
+            config.routing.default = fallback.clone();
             cleared.push("default");
         }
         if config.routing.planning_tasks.as_deref() == Some(name) {
-            config.routing.planning_tasks = None;
+            config.routing.planning_tasks = fallback.clone();
             cleared.push("planning_tasks");
         }
         config

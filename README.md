@@ -167,15 +167,38 @@ rm -rf ~/.ratchet           # cached credentials (OS keychain entries persist)
 ## Quick Start
 
 ```bash
-ratchet init my-project                    # scaffold .ratchet/ and ratchet.toml
-ratchet spec new billing-reminders         # create a spec
-ratchet plan billing-reminders             # generate a plan (uses configured model)
-ratchet run billing-reminders --all        # execute the task graph, gated
-ratchet verify billing-reminders           # standalone verification (CI-friendly)
-ratchet report --since 7d                  # cost/outcome dashboard
+ratchet init my-project
+cd my-project
+
+# point it at a model (this also sets routing.default)
+ratchet provider add claude --kind anthropic --key-env ANTHROPIC_API_KEY
+ratchet provider test claude          # confirm the credential works
+
+ratchet spec new billing-reminders    # then edit the acceptance criteria
+ratchet plan billing-reminders        # model drafts a task graph
+ratchet run billing-reminders --all   # model does the work
+ratchet verify billing-reminders      # check it against the spec
 ```
 
----
+That is the whole loop. `ratchet init` deliberately configures no providers, so
+routing is set the moment you add one — there is no config to hand-edit.
+
+Provider flags cover the common cases without touching `ratchet.toml`:
+
+```bash
+ratchet provider add local --kind ollama --model qwen2.5:7b
+ratchet provider add mimo  --kind mimo --model <model> --base-url https://... \
+  --key-env MIMO_API_KEY
+ratchet provider add claude-via-openrouter --kind anthropic --via openrouter \
+  --key-env OPENROUTER_API_KEY
+```
+
+### Stuck?
+
+```bash
+ratchet doctor            # config, credentials, routing, git — with fixes
+ratchet doctor --online   # also makes a live request to each provider
+```
 
 ## Commands
 
@@ -196,7 +219,8 @@ ratchet report --since 7d                  # cost/outcome dashboard
 | `ratchet review <spec>` | Show the plan-vs-actual delta from the last run |
 | `ratchet mcp <command> [args...]` | Connect to an MCP server |
 | `ratchet report [--since <days>]` | Cost/outcome dashboard |
-| `ratchet provider add/login/logout/list/remove` | Manage providers and credentials |
+| `ratchet doctor [--online]` | Diagnose setup problems and print how to fix them |
+| `ratchet provider add/login/logout/test/list/remove` | Manage providers and credentials |
 
 ---
 
@@ -526,6 +550,32 @@ curl -s localhost:8788/a2a -d '{
 `tasks/send` returns as soon as work is accepted; poll `tasks/get` for the
 outcome. Completed tasks carry `summary` and `review` artifacts. Without
 `--a2a`, the endpoint advertises a closed agent and refuses all work.
+
+## Testing without a model
+
+Model quality is the usual reason a run disappoints, which makes it hard to
+tell whether the harness is at fault. `examples/mock-model-server.py` is a
+scripted, OpenAI-compatible model that always behaves the same way, so a
+failure means the harness is wrong:
+
+```bash
+# terminal 1
+python3 examples/mock-model-server.py --port 8899
+
+# terminal 2
+ratchet provider add mock --kind mimo --model mock-model \
+  --base-url http://127.0.0.1:8899/v1 --key-env MOCK_KEY
+MOCK_KEY=x ratchet run <spec> --all
+```
+
+Useful switches for exercising specific paths:
+
+| Flag | Exercises |
+|---|---|
+| `--reject-first-review` | the reviewer → revision loop |
+| `--fail-first 2` | retry with backoff and cross-provider failover |
+
+---
 
 ## Development
 

@@ -68,3 +68,53 @@ fn disabled_review_is_treated_as_default() {
     enabled.delegation.review = true;
     assert!(!enabled.delegation.is_default());
 }
+
+#[test]
+fn scaffold_invents_no_providers() {
+    // Regression: `init` used to seed claude/deepseek entries. Routing then
+    // pointed at providers with no credentials, so the first `run` failed for
+    // a reason the user could not see.
+    let config = ProjectConfig::scaffold("demo");
+    assert!(
+        config.providers.is_empty(),
+        "scaffold must not invent providers: {:?}",
+        config.providers.keys().collect::<Vec<_>>()
+    );
+    assert!(config.routing.default.is_none());
+    assert!(config.routing.planning_tasks.is_none());
+}
+
+#[test]
+fn scaffolded_file_is_minimal() {
+    let text = toml::to_string_pretty(&ProjectConfig::scaffold("demo")).unwrap();
+    assert!(
+        !text.contains("[providers"),
+        "unexpected providers table:\n{text}"
+    );
+    assert!(
+        !text.contains("[routing]"),
+        "unexpected routing table:\n{text}"
+    );
+    assert!(text.contains("[project]"));
+}
+
+#[test]
+fn routing_is_set_once_a_provider_is_added() {
+    // Mirrors what `ratchet provider add` does, minus the credential check.
+    let mut config = ProjectConfig::scaffold("demo");
+    config.providers.insert(
+        "mock".to_string(),
+        ratchet_core::config::ProviderSettings {
+            kind: "mimo".to_string(),
+            api_key_env: Some("MOCK_KEY".to_string()),
+            base_url: None,
+            model: Some("m".to_string()),
+            extra_headers: Vec::new(),
+        },
+    );
+    config.routing.default = Some("mock".to_string());
+
+    let text = toml::to_string_pretty(&config).unwrap();
+    let back: ProjectConfig = toml::from_str(&text).unwrap();
+    assert_eq!(back.routing.default.as_deref(), Some("mock"));
+}

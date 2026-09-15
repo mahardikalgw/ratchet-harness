@@ -168,40 +168,20 @@ impl ProjectConfig {
         Ok(())
     }
 
+    /// A minimal starting configuration.
+    ///
+    /// Deliberately configures **no** providers: inventing `claude`/`deepseek`
+    /// entries the user does not have produces a config whose routing points
+    /// at providers with no credentials, so the first `ratchet run` fails for
+    /// a reason that is hard to see. `ratchet provider add` fills this in.
     pub fn scaffold(project_name: impl Into<String>) -> Self {
-        let mut providers = HashMap::new();
-        providers.insert(
-            "claude".to_string(),
-            ProviderSettings {
-                kind: "anthropic".to_string(),
-                api_key_env: Some("ANTHROPIC_API_KEY".to_string()),
-                base_url: None,
-                model: Some("claude-sonnet-4-20250514".to_string()),
-                extra_headers: Vec::new(),
-            },
-        );
-        providers.insert(
-            "deepseek".to_string(),
-            ProviderSettings {
-                kind: "deepseek".to_string(),
-                api_key_env: Some("DEEPSEEK_API_KEY".to_string()),
-                base_url: None,
-                model: Some("deepseek-chat".to_string()),
-                extra_headers: Vec::new(),
-            },
-        );
-
         Self {
             project: ProjectSettings {
                 name: project_name.into(),
                 description: None,
             },
-            providers,
-            routing: RoutingSettings {
-                default: Some("deepseek".to_string()),
-                planning_tasks: Some("claude".to_string()),
-                policy: RoutingPolicy::CapabilityThenCost,
-            },
+            providers: HashMap::new(),
+            routing: RoutingSettings::default(),
             sandbox: SandboxPolicy::default(),
             mcp: McpSettings::default(),
             delegation: DelegationSettings::default(),

@@ -131,6 +131,13 @@ enum Commands {
         since: u64,
     },
 
+    /// Check the project setup and report what needs fixing
+    Doctor {
+        /// Also make a live request to each provider
+        #[arg(long)]
+        online: bool,
+    },
+
     /// Manage providers and credentials
     Provider {
         #[command(subcommand)]
@@ -180,6 +187,9 @@ enum ProviderAction {
         /// Route through a reseller such as OpenRouter
         #[arg(long)]
         via: Option<String>,
+        /// Make this the default provider for runs
+        #[arg(long)]
+        default: bool,
     },
     /// Store a provider credential in the OS keychain
     Login {
@@ -250,6 +260,7 @@ async fn main() -> anyhow::Result<()> {
             a2a,
             read_only,
         } => dashboard::run(&cli.project_dir, port, a2a, read_only).await?,
+        Commands::Doctor { online } => doctor::run(&cli.project_dir, online).await?,
         Commands::Serve { port } => serve::run(&cli.project_dir, port).await?,
         Commands::Mcp { command, args } => mcp::connect(&cli.project_dir, &command, args).await?,
         Commands::Report { format, since } => {
@@ -268,6 +279,7 @@ async fn main() -> anyhow::Result<()> {
                 base_url,
                 model,
                 via,
+                default,
             } => {
                 provider_cmd::add(
                     &cli.project_dir,
@@ -277,6 +289,7 @@ async fn main() -> anyhow::Result<()> {
                     base_url,
                     model,
                     via,
+                    default,
                 )
                 .await?
             }

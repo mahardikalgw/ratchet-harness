@@ -1,4 +1,5 @@
 pub mod dashboard;
+pub mod doctor;
 pub mod helpers;
 pub mod import;
 pub mod init;
