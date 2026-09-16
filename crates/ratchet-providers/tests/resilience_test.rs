@@ -129,7 +129,8 @@ fn rate_limit_and_timeout_are_retryable() {
 fn auth_and_config_errors_are_not_retryable() {
     assert!(
         !ProviderError::Auth {
-            provider: "x".into()
+            provider: "x".into(),
+            message: "test".into(),
         }
         .is_retryable()
     );
@@ -172,6 +173,7 @@ async fn does_not_retry_a_permanent_failure() {
         name: "bad-key".into(),
         error: || ProviderError::Auth {
             provider: "bad-key".into(),
+            message: "test".into(),
         },
         calls: Arc::clone(&calls),
     };
@@ -230,6 +232,7 @@ async fn fails_over_even_on_permanent_errors() {
         name: "bad-key".into(),
         error: || ProviderError::Auth {
             provider: "bad-key".into(),
+            message: "test".into(),
         },
         calls: Arc::new(AtomicUsize::new(0)),
     };

@@ -321,9 +321,10 @@ pub async fn parse_completion_response(
     let status = response.status();
 
     if status.as_u16() == 401 || status.as_u16() == 403 {
-        let _ = response.text().await;
+        let body = response.text().await.unwrap_or_default();
         return Err(ProviderError::Auth {
             provider: provider.to_string(),
+            message: summarize_error_body(&body),
         });
     }
     if status.as_u16() == 429 {
@@ -401,8 +402,10 @@ pub async fn stream_chat(
         });
     }
     if status.as_u16() == 401 {
+        let body = response.text().await.unwrap_or_default();
         return Err(ProviderError::Auth {
             provider: provider.to_string(),
+            message: summarize_error_body(&body),
         });
     }
     if !status.is_success() {

@@ -29,8 +29,8 @@ pub enum ProviderError {
     #[error("stream error: {0}")]
     Stream(String),
 
-    #[error("authentication error: {provider}")]
-    Auth { provider: String },
+    #[error("authentication error: {provider} — {message}")]
+    Auth { provider: String, message: String },
 
     #[error("timeout")]
     Timeout,
@@ -68,7 +68,7 @@ impl ProviderError {
         match self {
             ProviderError::Api { provider, .. }
             | ProviderError::RateLimited { provider }
-            | ProviderError::Auth { provider } => Some(provider),
+            | ProviderError::Auth { provider, .. } => Some(provider),
             _ => None,
         }
     }

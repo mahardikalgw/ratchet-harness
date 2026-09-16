@@ -60,8 +60,10 @@ impl ModelProvider for AnthropicProvider {
             });
         }
         if response.status().as_u16() == 401 {
+            let body = response.text().await.unwrap_or_default();
             return Err(ProviderError::Auth {
                 provider: "anthropic".to_string(),
+                message: body.chars().take(300).collect(),
             });
         }
 
@@ -127,8 +129,10 @@ impl ModelProvider for AnthropicProvider {
             });
         }
         if status.as_u16() == 401 {
+            let body = response.text().await.unwrap_or_default();
             return Err(ProviderError::Auth {
                 provider: "anthropic".to_string(),
+                message: body.chars().take(300).collect(),
             });
         }
         if !status.is_success() {
