@@ -30,7 +30,7 @@ impl MiMoProvider {
             base_url: config.base_url.unwrap_or_else(|| {
                 // Verified live: api.mimo.ai does not resolve. This host
                 // exposes an OpenAI-compatible /v1/chat/completions.
-                "https://api.xiaomimimo.com/v1".to_string()
+                "https://token-plan-sgp.xiaomimimo.com/v1".to_string()
             }),
             model: config.model.unwrap_or_else(|| "mimo-pro".to_string()),
         })
