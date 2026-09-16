@@ -57,6 +57,8 @@ pub struct AgentHarness {
     /// Without these, changing model mid-session would mean editing the config
     /// and starting over.
     session_overrides: RunOverrides,
+    /// The directory the project lives in, so discovery can inspect files.
+    project_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -118,6 +120,7 @@ impl AgentHarness {
             metrics,
             plugins,
             session_overrides: RunOverrides::default(),
+            project_dir: None,
         })
     }
 
@@ -159,6 +162,11 @@ impl AgentHarness {
 
     pub fn with_retry(mut self, retry: RetryPolicy) -> Self {
         self.retry = retry;
+        self
+    }
+
+    pub fn with_project_dir(mut self, project_dir: PathBuf) -> Self {
+        self.project_dir = Some(project_dir);
         self
     }
 
@@ -370,9 +378,29 @@ impl AgentHarness {
         transcript: &[crate::discovery::Exchange],
         round: usize,
     ) -> CoreResult<crate::discovery::DiscoveryOutcome> {
-        let prompt = crate::discovery::discovery_prompt(intent, transcript, round);
-        let raw = self.converse(AgentRole::Planner, prompt, 2048).await?;
-        Ok(crate::discovery::parse_discovery(&raw))
+        let project_dir = self
+            .project_dir
+            .clone()
+            .or_else(|| std::env::current_dir().ok())
+            .unwrap_or_else(|| PathBuf::from("."));
+        let context = crate::discovery::build_project_context(&project_dir);
+        let prompt = crate::discovery::discovery_prompt(intent, transcript, round, &context);
+        let raw = self.converse(AgentRole::Planner, prompt.clone(), 2048).await?;
+        let outcome = crate::discovery::parse_discovery(&raw);
+
+        // Some models (especially cheaper ones) occasionally miss the strict
+        // JSON format. One retry with an explicit reminder usually fixes it.
+        if matches!(outcome, crate::discovery::DiscoveryOutcome::Unparseable(_)) && round <= 3 {
+            let retry_prompt = format!(
+                "{}\n\nIMPORTANT: Your previous response could not be parsed. \
+                 Reply with ONLY a single JSON object. No markdown fences. No extra text.",
+                &prompt
+            );
+            let raw2 = self.converse(AgentRole::Planner, retry_prompt, 2048).await?;
+            return Ok(crate::discovery::parse_discovery(&raw2));
+        }
+
+        Ok(outcome)
     }
 
     /// Turn a finished run into a plain-language report for the user.

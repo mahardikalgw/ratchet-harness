@@ -184,7 +184,7 @@ fn transcript_is_included_in_the_prompt() {
         question: "Fisik atau digital?".to_string(),
         answer: "fisik".to_string(),
     }];
-    let prompt = ratchet_core::discovery::discovery_prompt("toko online", &transcript, 2);
+    let prompt = ratchet_core::discovery::discovery_prompt("toko online", &transcript, 2, "(test context)");
 
     assert!(prompt.contains("toko online"));
     assert!(prompt.contains("Fisik atau digital?"));
@@ -193,8 +193,8 @@ fn transcript_is_included_in_the_prompt() {
 
 #[test]
 fn later_rounds_nudge_the_model_to_stop_asking() {
-    let early = ratchet_core::discovery::discovery_prompt("x", &[], 1);
-    let late = ratchet_core::discovery::discovery_prompt("x", &[], 4);
+    let early = ratchet_core::discovery::discovery_prompt("x", &[], 1, "");
+    let late = ratchet_core::discovery::discovery_prompt("x", &[], 4, "");
     assert!(!early.contains("propose the spec now"));
     assert!(late.contains("propose the spec now"));
 }

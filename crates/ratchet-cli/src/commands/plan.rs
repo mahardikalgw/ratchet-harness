@@ -14,7 +14,9 @@ pub async fn run(project_dir: &Path, spec_id: &str, _model: Option<String>) -> R
         );
     }
 
-    let mut harness = AgentHarness::new(config, providers).await?;
+    let mut harness = AgentHarness::new(config, providers)
+        .await?
+        .with_project_dir(project_dir.to_path_buf());
 
     let spec_path = project_dir
         .join(".ratchet")

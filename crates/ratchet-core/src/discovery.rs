@@ -256,8 +256,74 @@ pub fn parse_discovery(response: &str) -> DiscoveryOutcome {
     }
 }
 
+/// Build a short summary of the existing project so the model does not ask
+/// questions it can infer from the file tree.
+pub fn build_project_context(project_dir: &std::path::Path) -> String {
+    use std::fs;
+
+    let mut parts = Vec::new();
+
+    // Detected ecosystem
+    let detected = crate::detect::detect(project_dir);
+    if !detected.ecosystems.is_empty() {
+        parts.push(format!(
+            "Tech stack: {}",
+            detected.ecosystems.iter().map(|e| e.label()).collect::<Vec<_>>().join(", ")
+        ));
+    }
+    if !detected.source_dirs.is_empty() {
+        parts.push(format!(
+            "Source directories: {}",
+            detected.source_dirs.join(", ")
+        ));
+    }
+
+    // Key manifest snippets (first 20 lines)
+    for manifest in ["Cargo.toml", "package.json", "pyproject.toml", "go.mod"] {
+        let path = project_dir.join(manifest);
+        if let Ok(text) = fs::read_to_string(&path) {
+            let snippet: String = text.lines().take(20).collect::<Vec<_>>().join("\n");
+            parts.push(format!("--- {} ---\n{}", manifest, snippet));
+        }
+    }
+
+    // A shallow file tree (top-level + one level deep)
+    if let Ok(entries) = fs::read_dir(project_dir) {
+        let mut tree = Vec::new();
+        for entry in entries.flatten() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                let sub: Vec<String> = match fs::read_dir(entry.path()) {
+                    Ok(rd) => rd.flatten().take(8).map(|e| e.file_name().to_string_lossy().to_string()).collect(),
+                    Err(_) => Vec::new(),
+                };
+                if sub.is_empty() {
+                    tree.push(format!("{}/", name));
+                } else {
+                    tree.push(format!("{}/ ({} ...)", name, sub.join(", ")));
+                }
+            } else {
+                tree.push(name);
+            }
+        }
+        tree.sort();
+        parts.push(format!("Project layout:\n{}", tree.join("\n")));
+    }
+
+    if parts.is_empty() {
+        "(no project context available)".to_string()
+    } else {
+        parts.join("\n\n")
+    }
+}
+
 /// The prompt that drives elicitation.
-pub fn discovery_prompt(intent: &str, transcript: &[Exchange], round: usize) -> String {
+pub fn discovery_prompt(
+    intent: &str,
+    transcript: &[Exchange],
+    round: usize,
+    project_context: &str,
+) -> String {
     let history = if transcript.is_empty() {
         "(nothing yet)".to_string()
     } else {
@@ -284,14 +350,14 @@ what gets built. Otherwise decide, and state the assumption in the spec.
 Rules:
 - Ask at most 4 questions per turn, most important first.
 - Offer concrete options when the choice is bounded (kind: "choice").
-- Never ask about anything you can infer from the request.
+- Never ask about anything you can infer from the request or the project context below.
 - When you have enough for checkable acceptance criteria, propose the spec.
 - Every criteria must be checkable. Prefer a command (`verify`) or a file that
   must change (`verify_diff`). Avoid vague criteria like "works well".
 - A spec describes ONE feature or a small coherent slice, not a whole roadmap.
 - Write in the user's language.
 
-Reply with a single JSON object and nothing else.
+Reply with a single JSON object and nothing else. Do not wrap it in markdown code fences.
 
 To ask questions:
 {{"done": false, "rationale": "why you need this", "questions": [
@@ -311,6 +377,9 @@ To propose the spec:
   ],
   "constraints": ["..."]
 }}}}
+
+Existing project context:
+{project_context}
 
 The user's request:
 {intent}

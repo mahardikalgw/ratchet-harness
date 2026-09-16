@@ -69,6 +69,7 @@ pub async fn build_harness(project_dir: &Path) -> Result<AgentHarness> {
     let (config, providers) = load_project(project_dir)?;
     let harness = AgentHarness::new(config, providers)
         .await?
-        .with_approval(Arc::new(CliApprovalHandler));
+        .with_approval(Arc::new(CliApprovalHandler))
+        .with_project_dir(project_dir.to_path_buf());
     Ok(harness)
 }

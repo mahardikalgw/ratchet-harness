@@ -7,7 +7,9 @@ use super::helpers::load_project;
 
 pub async fn run(project_dir: &Path, spec_id: &str) -> Result<()> {
     let (config, providers) = load_project(project_dir)?;
-    let harness = AgentHarness::new(config, providers).await?;
+    let harness = AgentHarness::new(config, providers)
+        .await?
+        .with_project_dir(project_dir.to_path_buf());
 
     let spec_path = project_dir
         .join(".ratchet")

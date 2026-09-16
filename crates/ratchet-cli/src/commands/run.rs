@@ -25,7 +25,8 @@ pub async fn run(
 
     let mut harness = AgentHarness::new(config, providers)
         .await?
-        .with_approval(Arc::new(CliApprovalHandler));
+        .with_approval(Arc::new(CliApprovalHandler))
+        .with_project_dir(project_dir.to_path_buf());
 
     let spec_path = project_dir
         .join(".ratchet")
