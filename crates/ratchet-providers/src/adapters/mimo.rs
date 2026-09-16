@@ -32,7 +32,7 @@ impl MiMoProvider {
                 // exposes an OpenAI-compatible /v1/chat/completions.
                 "https://token-plan-sgp.xiaomimimo.com/v1".to_string()
             }),
-            model: config.model.unwrap_or_else(|| "mimo-pro".to_string()),
+            model: config.model.unwrap_or_else(|| "mimo-v2.5".to_string()),
         })
     }
 }
